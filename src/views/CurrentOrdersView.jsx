@@ -1,0 +1,333 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  ShoppingBag,
+  Clock,
+  UserCheck,
+  MapPin,
+  Phone,
+  CheckCircle2,
+  ChevronRight,
+  UserPlus,
+  AlertCircle,
+  Truck,
+  Ban,
+  X,
+  AlertTriangle,
+  Printer,
+  FileText
+} from 'lucide-react';
+import { useAdmin } from '../context/AdminContext';
+import Header from '../components/Header';
+import ThermalReceiptModal from '../components/ThermalReceiptModal';
+import gsap from 'gsap';
+
+export default function CurrentOrdersView() {
+  const { orders, staff, cancelReasonsList, updateOrderStatus, cancelOrder, assignDeliveryPartner } = useAdmin();
+  const [filterStatus, setFilterStatus] = useState('All');
+
+  // Cancel order modal state
+  const [cancellingOrder, setCancellingOrder] = useState(null);
+  const [selectedReason, setSelectedReason] = useState(cancelReasonsList[0]);
+  const [customReasonText, setCustomReasonText] = useState('');
+
+  // Print Bill Modal state
+  const [printingOrder, setPrintingOrder] = useState(null);
+
+  const containerRef = useRef(null);
+
+  const currentOrders = orders.filter(o => o.isCurrent);
+
+  const filteredOrders = currentOrders.filter(order => {
+    if (filterStatus === 'All') return true;
+    return order.status === filterStatus;
+  });
+
+  useEffect(() => {
+    if (containerRef.current) {
+      gsap.fromTo(
+        containerRef.current.children,
+        { opacity: 0, scale: 0.97, y: 15 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.4, stagger: 0.08, ease: 'power2.out' }
+      );
+    }
+  }, [filterStatus, orders.length]);
+
+  const handleConfirmCancel = async (e) => {
+    e.preventDefault();
+    if (!cancellingOrder) return;
+    const finalReason = selectedReason === 'Other / Custom Reason' ? (customReasonText.trim() || 'Other Reason') : selectedReason;
+    await cancelOrder(cancellingOrder.id, finalReason);
+    setCancellingOrder(null);
+    setCustomReasonText('');
+  };
+
+  return (
+    <div className="flex-1 min-h-screen bg-slate-50/50 flex flex-col">
+      <Header
+        title="Live Current Orders"
+        subtitle="Manage live customer orders in Indian Rupees (₹), print thermal receipts, update status, and assign partners"
+      />
+
+      <main className="p-8 space-y-6 flex-1 max-w-7xl w-full mx-auto">
+        {/* Status Filter Tabs & Summary */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="flex items-center gap-2">
+            {['All', 'Pending', 'Preparing', 'Out for Delivery'].map((status) => {
+              const count = status === 'All' ? currentOrders.length : currentOrders.filter(o => o.status === status).length;
+              return (
+                <button
+                  key={status}
+                  onClick={() => setFilterStatus(status)}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all ${
+                    filterStatus === status
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>{status}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+                    filterStatus === status ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="text-xs font-medium text-slate-500 flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>{currentOrders.length} active orders requiring kitchen/delivery action</span>
+          </div>
+        </div>
+
+        {/* Orders Cards Grid */}
+        {filteredOrders.length === 0 ? (
+          <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-3">
+            <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
+            <h3 className="text-base font-bold text-slate-700">No active orders found</h3>
+            <p className="text-xs text-slate-400">No live orders in database under "{filterStatus}".</p>
+          </div>
+        ) : (
+          <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {filteredOrders.map((order) => (
+              <div
+                key={order.id}
+                className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all p-6 space-y-5 flex flex-col justify-between"
+              >
+                {/* Header info */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div>
+                      <span className="text-xs font-bold text-emerald-600">{order.id}</span>
+                      <h3 className="font-extrabold text-slate-800 text-base">{order.customerName}</h3>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400 font-medium">{order.orderTime}</span>
+                      {/* Cancel Order Button */}
+                      <button
+                        onClick={() => {
+                          setSelectedReason(cancelReasonsList[0]);
+                          setCustomReasonText('');
+                          setCancellingOrder(order);
+                        }}
+                        className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold border border-rose-200 flex items-center gap-1 transition-colors"
+                        title="Cancel Order"
+                      >
+                        <Ban className="w-3.5 h-3.5" /> Cancel
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 text-xs text-slate-600">
+                    <p className="flex items-center gap-2 text-slate-700 font-medium">
+                      <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="truncate">{order.deliveryAddress}</span>
+                    </p>
+                    <p className="flex items-center gap-2 text-slate-500">
+                      <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      {order.customerPhone}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Ordered Food Items List */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ordered Items</p>
+                  <div className="space-y-1">
+                    {order.items && order.items.map((item, i) => (
+                      <div key={i} className="flex justify-between text-xs text-slate-700 font-medium">
+                        <span>{item.quantity}x {item.name}</span>
+                        <span className="font-bold text-slate-900">₹{(item.quantity * item.price).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="pt-2 border-t border-slate-200 flex justify-between text-xs font-bold text-slate-900">
+                    <span>Total Amount</span>
+                    <span className="text-emerald-700 text-sm">₹{(order.totalAmount || 0).toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Delivery Partner Assignment & Status Update Section */}
+                <div className="space-y-4 pt-2 border-t border-slate-100">
+                  {/* Delivery Partner Dropdown Selector */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Truck className="w-4 h-4 text-emerald-600" /> Assign Delivery Partner
+                      </span>
+                      {order.assignedPartnerId && (
+                        <span className="text-[11px] font-semibold text-emerald-600">Assigned</span>
+                      )}
+                    </label>
+
+                    <select
+                      value={order.assignedPartnerId || ''}
+                      onChange={(e) => assignDeliveryPartner(order.id, e.target.value)}
+                      className={`w-full text-xs font-semibold rounded-xl px-3 py-2 border transition-all ${
+                        order.assignedPartnerId
+                          ? 'bg-emerald-50/60 border-emerald-300 text-emerald-800'
+                          : 'bg-amber-50 border-amber-300 text-amber-800'
+                      }`}
+                    >
+                      <option value="">-- Select Delivery Person --</option>
+                      {staff.map(person => (
+                        <option key={person.id} value={person.id}>
+                          {person.name} ({person.vehicle}) - Status: {person.status}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Order Progress Status Controls */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 block">Update Order Status</label>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {['Pending', 'Preparing', 'Out for Delivery', 'Delivered'].map((st) => (
+                        <button
+                          key={st}
+                          onClick={() => updateOrderStatus(order.id, st)}
+                          className={`py-2 rounded-xl text-[11px] font-bold transition-all ${
+                            order.status === st
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {st === 'Out for Delivery' ? 'Delivery' : st}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* PRINT BILL / THERMAL RECEIPT BUTTON UNDER EVERY ORDER */}
+                  <div className="pt-2">
+                    <button
+                      onClick={() => setPrintingOrder(order)}
+                      className={`w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs ${
+                        order.isBillPrinted
+                          ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : 'bg-slate-900 hover:bg-slate-800 text-white'
+                      }`}
+                    >
+                      <Printer className="w-4 h-4 text-emerald-400" />
+                      <span>{order.isBillPrinted ? 'Print Bill Again (Thermal POS)' : 'Print Bill (POS Printer)'}</span>
+                      {order.isBillPrinted && (
+                        <span className="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full font-extrabold ml-1">
+                          Printed
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* THERMAL RECEIPT PRINT MODAL */}
+      {printingOrder && (
+        <ThermalReceiptModal
+          order={printingOrder}
+          onClose={() => setPrintingOrder(null)}
+        />
+      )}
+
+      {/* CANCEL ORDER MODAL WITH REASON DROPDOWN */}
+      {cancellingOrder && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white w-full max-w-md rounded-2xl border border-slate-200 shadow-2xl p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Cancel Order #{cancellingOrder.id}</h3>
+                  <p className="text-xs text-slate-400">Specify reason for cancelling customer order</p>
+                </div>
+              </div>
+              <button onClick={() => setCancellingOrder(null)} className="p-1 text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmCancel} className="space-y-4">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                <p className="font-bold text-slate-800">{cancellingOrder.customerName}</p>
+                <p className="text-slate-500 truncate">{cancellingOrder.deliveryAddress}</p>
+                <p className="font-extrabold text-emerald-700 mt-1">₹{(cancellingOrder.totalAmount || 0).toFixed(2)}</p>
+              </div>
+
+              {/* Cancellation Reason Dropdown */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Select Cancellation Reason *</label>
+                <select
+                  value={selectedReason}
+                  onChange={(e) => setSelectedReason(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-rose-500"
+                >
+                  {cancelReasonsList.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Optional Custom Reason Input */}
+              {selectedReason === 'Other / Custom Reason' && (
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Enter Custom Reason</label>
+                  <textarea
+                    rows="2"
+                    required
+                    placeholder="Write detailed reason..."
+                    value={customReasonText}
+                    onChange={(e) => setCustomReasonText(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-2 focus:ring-rose-500"
+                  ></textarea>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setCancellingOrder(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                >
+                  Keep Order
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5"
+                >
+                  <Ban className="w-4 h-4" /> Confirm Order Cancellation
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
