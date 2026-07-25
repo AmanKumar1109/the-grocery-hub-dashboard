@@ -1,14 +1,11 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AdminProvider } from './context/AdminContext';
-import { AuthProvider } from './context/AuthContext';
 
 // Layout & Components
 import Sidebar from './components/Sidebar';
-import ProtectedRoute from './components/ProtectedRoute';
 
 // Views
-import LoginPage from './views/LoginPage';
 import DashboardView from './views/DashboardView';
 import ItemsView from './views/ItemsView';
 import AddItemView from './views/AddItemView';
@@ -18,11 +15,7 @@ import StaffView from './views/StaffView';
 import AddStaffView from './views/AddStaffView';
 import AuditLogsView from './views/AuditLogsView';
 
-/**
- * DashboardLayout – rendered only for authenticated users.
- * Includes the persistent sidebar + routed content.
- */
-function DashboardLayout() {
+function App() {
   return (
     <AdminProvider>
       <div className="flex min-h-screen bg-slate-50/50 font-sans text-slate-800 antialiased selection:bg-emerald-500 selection:text-white">
@@ -45,27 +38,6 @@ function DashboardLayout() {
         </div>
       </div>
     </AdminProvider>
-  );
-}
-
-function App() {
-  return (
-    <AuthProvider>
-      <Routes>
-        {/* Public Route – Login page (no sidebar, no admin data) */}
-        <Route path="/login" element={<LoginPage />} />
-
-        {/* Protected Routes – requires Firebase Auth session */}
-        <Route
-          path="/*"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </AuthProvider>
   );
 }
 

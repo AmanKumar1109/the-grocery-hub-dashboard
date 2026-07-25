@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -9,26 +9,13 @@ import {
   UserPlus,
   ClipboardList,
   ShieldCheck,
-  Package,
-  LogOut
+  Package
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
-import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { orders, items, staff } = useAdmin();
-  const { currentUser, logout } = useAuth();
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/login', { replace: true });
-    } catch (err) {
-      console.error('Logout error:', err);
-    }
-  };
 
   const currentOrdersCount = orders.filter(o => o.isCurrent).length;
 
@@ -166,28 +153,21 @@ export default function Sidebar() {
       </div>
 
       {/* System Admin Status Footer */}
-      <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3">
+      <div className="p-4 border-t border-slate-100 bg-slate-50/50">
         <div className="flex items-center gap-3">
           <div className="relative">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-sm shadow-sm">
-              {currentUser?.email?.[0]?.toUpperCase() || 'A'}
+              A
             </div>
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-slate-800 truncate">{currentUser?.email || 'Admin'}</p>
+            <p className="text-xs font-bold text-slate-800 truncate">Admin</p>
             <p className="text-[11px] text-slate-400 truncate flex items-center gap-1">
               <ShieldCheck className="w-3 h-3 text-emerald-600" /> Super Admin
             </p>
           </div>
         </div>
-        {/* Logout Button */}
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold border border-rose-200 transition-all cursor-pointer"
-        >
-          <LogOut className="w-3.5 h-3.5" /> Sign Out
-        </button>
       </div>
     </aside>
   );
