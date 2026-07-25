@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { db, firebaseConfig } from '../firebase';
 import {
   collection,
   onSnapshot,
@@ -10,10 +10,18 @@ import {
   deleteDoc,
   getDocs
 } from 'firebase/firestore';
+import { initializeApp, getApps } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 
 const AdminContext = createContext();
 
 export const useAdmin = () => useContext(AdminContext);
+
+// Secondary Firebase app to create staff accounts without logging out current admin
+const secondaryAppName = 'secondary-staff-creator';
+const secondaryApp = getApps().find(a => a.name === secondaryAppName)
+  || initializeApp(firebaseConfig, secondaryAppName);
+const secondaryAuth = getAuth(secondaryApp);
 
 export const AdminProvider = ({ children }) => {
   // Default Grocery Categories

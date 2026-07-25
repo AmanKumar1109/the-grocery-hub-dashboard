@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration using Vite Environment Variables
 export const firebaseConfig = {
@@ -19,6 +20,9 @@ export const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore Database
 export const db = getFirestore(app);
+
+// Initialize Firebase Auth
+export const auth = getAuth(app);
 
 // Safely initialize Analytics if supported in browser environment
 export let analytics = null;

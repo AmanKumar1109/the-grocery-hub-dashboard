@@ -39,8 +39,8 @@ export default function AddStaffView() {
       await addStaff(formData);
       setSuccessMsg(true);
       setTimeout(() => {
-        navigate('/staff');
-      }, 1500);
+        navigate('/dashboard/staff');
+      }, 2000);
     } catch (err) {
       console.error("Error adding staff:", err);
       setErrorMsg(err.message || 'Failed to create user account.');
@@ -58,20 +58,25 @@ export default function AddStaffView() {
 
       <main className="p-8 max-w-3xl w-full mx-auto flex-1 space-y-6">
         <Link
-          to="/staff"
+          to="/dashboard/staff"
           className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Delivery Staff
         </Link>
 
         {successMsg && (
-          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-3 animate-fade-in">
-            <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-start gap-3 animate-fade-in">
+            <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
               <Check className="w-5 h-5" />
             </div>
             <div>
               <p className="font-bold text-sm">Delivery Partner Registered Successfully!</p>
-              <p className="text-xs text-emerald-600">Saved successfully. Redirecting to staff list...</p>
+              <p className="text-xs text-emerald-600 mt-0.5">Firebase Auth account created. Rider can now login with:</p>
+              <div className="mt-2 bg-emerald-100 rounded-lg px-3 py-2 space-y-0.5">
+                <p className="text-xs font-bold text-emerald-900">📧 Email: <span className="font-extrabold">{formData.email}</span></p>
+                <p className="text-xs font-bold text-emerald-900">🔑 Password: <span className="font-extrabold">{formData.password}</span></p>
+              </div>
+              <p className="text-xs text-emerald-500 mt-1.5">Redirecting to staff list…</p>
             </div>
           </div>
         )}
@@ -183,7 +188,7 @@ export default function AddStaffView() {
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => navigate('/staff')}
+                onClick={() => navigate('/dashboard/staff')}
                 className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
               >
                 Cancel

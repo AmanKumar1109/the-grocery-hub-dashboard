@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ShoppingBag, Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
+import { ShoppingBag, Mail, Lock, Eye, EyeOff, LogIn, AlertCircle, Truck, Shield } from 'lucide-react';
 
 export default function LoginPage() {
-  const { login, currentUser, authLoading } = useAuth();
+  const { login, currentUser, userRole, authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -13,9 +13,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Already logged in → go to dashboard
+  // Already logged in → redirect based on role
   if (!authLoading && currentUser) {
-    return <Navigate to="/" replace />;
+    if (userRole === 'superadmin') return <Navigate to="/" replace />;
+    if (userRole === 'delivery') return <Navigate to="/rider" replace />;
   }
 
   const handleLogin = async (e) => {
@@ -23,8 +24,14 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(email.trim(), password);
-      navigate('/', { replace: true });
+      const credential = await login(email.trim(), password);
+      const loggedEmail = credential.user.email.toLowerCase();
+      // Role-based redirect
+      if (loggedEmail === 'admin@admin.com') {
+        navigate('/', { replace: true });
+      } else {
+        navigate('/rider', { replace: true });
+      }
     } catch (err) {
       console.error(err);
       switch (err.code) {
@@ -37,7 +44,7 @@ export default function LoginPage() {
           setError('Too many failed attempts. Please wait a moment and try again.');
           break;
         case 'auth/user-disabled':
-          setError('This admin account has been disabled. Contact support.');
+          setError('This account has been disabled. Contact support.');
           break;
         default:
           setError('Login failed. Check your credentials and try again.');
@@ -48,7 +55,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Subtle Background Pattern */}
       <div
         className="absolute inset-0 opacity-5"
@@ -73,7 +80,25 @@ export default function LoginPage() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-white tracking-tight">The Grocery Hub</h1>
-              <p className="text-emerald-400 text-sm font-semibold mt-0.5">Admin Dashboard · Store Management</p>
+              <p className="text-emerald-400 text-sm font-semibold mt-0.5">Staff Portal · Admin & Delivery</p>
+            </div>
+          </div>
+
+          {/* Role Info Cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-col items-center gap-1.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+                <Shield className="w-4 h-4 text-amber-400" />
+              </div>
+              <p className="text-[11px] font-bold text-white">Super Admin</p>
+              <p className="text-[10px] text-slate-400 text-center">Full dashboard access</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-col items-center gap-1.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                <Truck className="w-4 h-4 text-emerald-400" />
+              </div>
+              <p className="text-[11px] font-bold text-white">Delivery Rider</p>
+              <p className="text-[10px] text-slate-400 text-center">Your assigned orders</p>
             </div>
           </div>
 
@@ -93,7 +118,7 @@ export default function LoginPage() {
             {/* Email */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-300 tracking-wide uppercase">
-                Admin Email
+                Email Address
               </label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -101,7 +126,7 @@ export default function LoginPage() {
                   type="email"
                   required
                   autoComplete="email"
-                  placeholder="admin@groceryhub.com"
+                  placeholder="admin@admin.com or rider email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-white/8 border border-white/15 text-white placeholder-slate-500 rounded-xl pl-11 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
@@ -150,7 +175,7 @@ export default function LoginPage() {
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
-                  <span>Sign In to Dashboard</span>
+                  <span>Sign In</span>
                 </>
               )}
             </button>
@@ -158,7 +183,7 @@ export default function LoginPage() {
 
           {/* Footer */}
           <p className="text-center text-[11px] text-slate-500 font-medium">
-            🔒 Authorized personnel only · The Grocery Hub Store Admin
+            🔒 Authorized personnel only · The Grocery Hub
           </p>
         </div>
       </div>

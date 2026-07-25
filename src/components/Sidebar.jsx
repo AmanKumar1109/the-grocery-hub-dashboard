@@ -25,7 +25,7 @@ export default function Sidebar() {
       items: [
         {
           name: 'Dashboard',
-          path: '/',
+          path: '/dashboard',
           icon: LayoutDashboard
         }
       ]
@@ -35,13 +35,13 @@ export default function Sidebar() {
       items: [
         {
           name: 'Grocery Products',
-          path: '/items',
+          path: '/dashboard/items',
           icon: Package,
           badge: items.length
         },
         {
           name: 'Add New Product',
-          path: '/items/add',
+          path: '/dashboard/items/add',
           icon: PlusCircle
         }
       ]
@@ -51,14 +51,14 @@ export default function Sidebar() {
       items: [
         {
           name: 'Current Orders',
-          path: '/orders/current',
+          path: '/dashboard/orders/current',
           icon: ShoppingBag,
           badge: currentOrdersCount,
           badgeColor: 'bg-emerald-100 text-emerald-700 font-bold'
         },
         {
           name: 'Order History',
-          path: '/orders/history',
+          path: '/dashboard/orders/history',
           icon: History
         }
       ]
@@ -68,13 +68,13 @@ export default function Sidebar() {
       items: [
         {
           name: 'Delivery Personnel',
-          path: '/staff',
+          path: '/dashboard/staff',
           icon: Users,
           badge: staff.length
         },
         {
           name: 'Add Delivery Person',
-          path: '/staff/add',
+          path: '/dashboard/staff/add',
           icon: UserPlus
         }
       ]
@@ -84,7 +84,7 @@ export default function Sidebar() {
       items: [
         {
           name: 'Audit Logs',
-          path: '/audit-logs',
+          path: '/dashboard/audit-logs',
           icon: ClipboardList
         }
       ]
