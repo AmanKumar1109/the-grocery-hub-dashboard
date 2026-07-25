@@ -34,20 +34,32 @@ const AdminContext = createContext();
 export const useAdmin = () => useContext(AdminContext);
 
 export const AdminProvider = ({ children }) => {
+  // Default Grocery Categories
+  const defaultGroceryCategories = [
+    'Fresh Vegetables',
+    'Organic Fruits',
+    'Dairy & Eggs',
+    'Bakery & Bread',
+    'Beverages & Juices',
+    'Snacks & Munchies',
+    'Meat & Seafood'
+  ];
+
   // Pure Real-time Firestore state
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(defaultGroceryCategories);
   const [items, setItems] = useState([]);
   const [staff, setStaff] = useState([]);
   const [orders, setOrders] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Helper to purge auto-seeded dummy data from Firestore if present
+  // Helper to purge auto-seeded dummy data & old food categories from Firestore
   const purgeDummyDataFromFirestore = async () => {
     try {
       const dummyItemIds = ['ITEM-101', 'ITEM-102', 'ITEM-103', 'ITEM-104', 'ITEM-105', 'ITEM-106'];
       const dummyStaffIds = ['STF-001', 'STF-002', 'STF-003', 'STF-004'];
       const dummyOrderIds = ['ORD-9481', 'ORD-9482', 'ORD-9483', 'ORD-9470', 'ORD-9468', 'ORD-9455'];
+      const oldFoodCatIds = ['Burgers', 'Burger', 'Pizza', 'Pizzas', 'Salad', 'Salads', 'Drink', 'Drinks', 'Dessert', 'Desserts', 'Starters', 'Main Course', 'Fast Food'];
 
       for (const id of dummyItemIds) {
         await deleteDoc(doc(db, 'items', id)).catch(() => {});
@@ -58,9 +70,58 @@ export const AdminProvider = ({ children }) => {
       for (const id of dummyOrderIds) {
         await deleteDoc(doc(db, 'orders', id)).catch(() => {});
       }
+      for (const id of oldFoodCatIds) {
+        await deleteDoc(doc(db, 'categories', id)).catch(() => {});
+      }
     } catch (err) {
       console.warn("Purge dummy data error:", err);
     }
+  };
+
+  // Audio Ping Notification for New Orders
+  const playOrderPingChime = () => {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.type = 'sine';
+      osc2.type = 'sine';
+
+      // Tone 1: High E (659.25 Hz) -> Tone 2: Higher A (880.00 Hz)
+      osc1.frequency.setValueAtTime(659.25, ctx.currentTime);
+      osc2.frequency.setValueAtTime(880.00, ctx.currentTime + 0.15);
+
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 0.15);
+
+      osc2.start(ctx.currentTime + 0.15);
+      osc2.stop(ctx.currentTime + 0.6);
+    } catch (err) {
+      console.warn("Audio ping notification failed:", err);
+    }
+  };
+
+  // Helper to safely extract milliseconds from strings, Firestore Timestamps, and Date objects
+  const getTimeMs = (val) => {
+    if (!val) return 0;
+    if (typeof val === 'string') return new Date(val).getTime() || 0;
+    if (typeof val.toMillis === 'function') return val.toMillis();
+    if (typeof val.seconds === 'number') return val.seconds * 1000;
+    if (typeof val === 'number') return val;
+    if (val instanceof Date) return val.getTime();
+    return 0;
   };
 
   // Subscribe to Firestore Collections Real-time
@@ -77,9 +138,18 @@ export const AdminProvider = ({ children }) => {
     });
 
     // Categories snapshot
-    const unsubCat = onSnapshot(collection(db, 'categories'), (snap) => {
-      const loadedCats = snap.docs.map(d => d.data().name || d.id);
-      setCategories(loadedCats);
+    const unsubCat = onSnapshot(collection(db, 'categories'), async (snap) => {
+      if (snap.empty) {
+        // Auto-seed default grocery categories
+        for (const catName of defaultGroceryCategories) {
+          await setDoc(doc(db, 'categories', catName), { name: catName }).catch(() => {});
+        }
+        setCategories(defaultGroceryCategories);
+      } else {
+        const loadedCats = snap.docs.map(d => d.data().name || d.id);
+        const cleanCats = loadedCats.filter(c => !['Burgers', 'Burger', 'Pizza', 'Pizzas', 'Salad', 'Salads', 'Drink', 'Drinks', 'Dessert', 'Desserts', 'Starters', 'Main Course', 'Fast Food'].includes(c));
+        setCategories(cleanCats.length > 0 ? cleanCats : defaultGroceryCategories);
+      }
     });
 
     // Staff snapshot
@@ -90,18 +160,38 @@ export const AdminProvider = ({ children }) => {
       setStaff(loadedStaff);
     });
 
-    // Orders snapshot
-    const unsubOrders = onSnapshot(collection(db, 'orders'), (snap) => {
-      const loadedOrders = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(o => !['ORD-9481', 'ORD-9482', 'ORD-9483', 'ORD-9470', 'ORD-9468', 'ORD-9455'].includes(o.id));
+    // Orders snapshot with audio ping for new incoming orders
+    let isFirstOrdersLoad = true;
+    const unsubOrders = onSnapshot(collection(db, 'orders'), async (snap) => {
+      const dummyOrderIds = ['ORD-9481', 'ORD-9482', 'ORD-9483', 'ORD-9470', 'ORD-9468', 'ORD-9455'];
+      const loadedOrders = [];
+
+      for (const d of snap.docs) {
+        // Auto-delete ghost orders with random document IDs or Valued Customer placeholder
+        if (!d.id.startsWith('ORD-') || dummyOrderIds.includes(d.id) || d.data().customerName === 'Valued Customer') {
+          await deleteDoc(doc(db, 'orders', d.id)).catch(() => {});
+          continue;
+        }
+        loadedOrders.push({ id: d.id, ...d.data() });
+      }
+
+      loadedOrders.sort((a, b) => getTimeMs(b.createdAt || b.updatedAt) - getTimeMs(a.createdAt || a.updatedAt));
+
+      if (!isFirstOrdersLoad) {
+        const hasNewIncoming = snap.docChanges().some(change => change.type === 'added' && change.doc.id.startsWith('ORD-'));
+        if (hasNewIncoming) {
+          playOrderPingChime();
+        }
+      }
+      isFirstOrdersLoad = false;
+
       setOrders(loadedOrders);
     });
 
     // Audit logs snapshot
     const unsubLogs = onSnapshot(collection(db, 'auditLogs'), (snap) => {
       const loadedLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      loadedLogs.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+      loadedLogs.sort((a, b) => getTimeMs(b.timestamp) - getTimeMs(a.timestamp));
       setAuditLogs(loadedLogs);
     });
 
@@ -118,7 +208,7 @@ export const AdminProvider = ({ children }) => {
   const cancelReasonsList = [
     'Too many pending orders',
     'Delivery staff / Driver not available',
-    'Item out of stock / Kitchen busy',
+    'Item out of stock / Store busy',
     'Customer requested cancellation',
     'Invalid or unserviceable delivery address',
     'Other / Custom Reason'
@@ -194,33 +284,37 @@ export const AdminProvider = ({ children }) => {
 
   // Actions for Items & Visibility Toggle
   const addItem = async (newItem) => {
-    if (newItem.category && !categories.includes(newItem.category)) {
-      await addCategory(newItem.category);
+    const finalCategory = newItem.category && newItem.category.trim() ? newItem.category.trim() : 'General';
+    if (finalCategory && finalCategory !== 'General' && !categories.includes(finalCategory)) {
+      await addCategory(finalCategory);
     }
     const itemId = `ITEM-${Math.floor(100 + Math.random() * 900)}`;
     const createdItem = {
       ...newItem,
+      category: finalCategory,
       id: itemId,
       price: parseFloat(newItem.price),
       rating: 5.0,
-      inStock: true,
+      inStock: newItem.inStock !== false,
       isVisible: true, // Default visible
       createdAt: new Date().toISOString()
     };
     await setDoc(doc(db, 'items', itemId), createdItem);
-    await addAuditLog('ITEM_CREATED', `Added food item "${createdItem.name}" (₹${createdItem.price}) to Firestore database`, 'Catalog', 'success');
+    await addAuditLog('ITEM_CREATED', `Added grocery product "${createdItem.name}" (₹${createdItem.price}) to Firestore database`, 'Catalog', 'success');
     return createdItem;
   };
 
   const editItem = async (id, updatedFields) => {
-    if (updatedFields.category && !categories.includes(updatedFields.category)) {
-      await addCategory(updatedFields.category);
+    const finalCategory = updatedFields.category && updatedFields.category.trim() ? updatedFields.category.trim() : 'General';
+    if (finalCategory && finalCategory !== 'General' && !categories.includes(finalCategory)) {
+      await addCategory(finalCategory);
     }
     await updateDoc(doc(db, 'items', id), {
       ...updatedFields,
+      category: finalCategory,
       price: parseFloat(updatedFields.price)
     });
-    await addAuditLog('ITEM_UPDATED', `Updated item "${updatedFields.name || id}" in Firestore database`, 'Catalog', 'warning');
+    await addAuditLog('ITEM_UPDATED', `Updated product "${updatedFields.name || id}" in Firestore database`, 'Catalog', 'warning');
   };
 
   const toggleItemVisibility = async (id, currentVisibility) => {
@@ -232,6 +326,18 @@ export const AdminProvider = ({ children }) => {
       `Set item "${target?.name || id}" visibility to ${newVis ? 'Visible (Active)' : 'Hidden (Inactive)'}`,
       'Catalog',
       newVis ? 'success' : 'warning'
+    );
+  };
+
+  const toggleItemStock = async (id, currentInStock) => {
+    const newStock = !currentInStock;
+    await updateDoc(doc(db, 'items', id), { inStock: newStock });
+    const target = items.find(i => i.id === id);
+    await addAuditLog(
+      'ITEM_STOCK_TOGGLED',
+      `Updated stock for "${target?.name || id}" to ${newStock ? 'In Stock' : 'Out of Stock'}`,
+      'Catalog',
+      newStock ? 'success' : 'warning'
     );
   };
 
@@ -348,6 +454,7 @@ export const AdminProvider = ({ children }) => {
       addItem,
       editItem,
       toggleItemVisibility,
+      toggleItemStock,
       deleteItem,
       updateOrderStatus,
       cancelOrder,

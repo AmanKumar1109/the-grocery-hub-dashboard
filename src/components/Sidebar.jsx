@@ -1,28 +1,40 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
-  UtensilsCrossed,
-  PlusCircle,
   ShoppingBag,
+  PlusCircle,
   History,
   Users,
   UserPlus,
   ClipboardList,
-  ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Package,
+  LogOut
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { orders, items, staff } = useAdmin();
+  const { currentUser, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login', { replace: true });
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
 
   const currentOrdersCount = orders.filter(o => o.isCurrent).length;
 
   const navSections = [
     {
-      title: 'MAIN MENU',
+      title: 'NAVIGATION',
       items: [
         {
           name: 'Dashboard',
@@ -32,16 +44,16 @@ export default function Sidebar() {
       ]
     },
     {
-      title: 'FOOD CATALOG',
+      title: 'GROCERY CATALOG',
       items: [
         {
-          name: 'View Items',
+          name: 'Grocery Products',
           path: '/items',
-          icon: UtensilsCrossed,
+          icon: Package,
           badge: items.length
         },
         {
-          name: 'Add New Item',
+          name: 'Add New Product',
           path: '/items/add',
           icon: PlusCircle
         }
@@ -97,7 +109,7 @@ export default function Sidebar() {
       {/* Brand Header */}
       <div className="h-16 flex items-center px-6 border-b border-slate-100 gap-3">
         <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-200">
-          <UtensilsCrossed className="w-5 h-5" />
+          <ShoppingBag className="w-5 h-5" />
         </div>
         <div>
           <h1 className="font-extrabold text-slate-800 tracking-tight text-base leading-tight">
@@ -154,23 +166,28 @@ export default function Sidebar() {
       </div>
 
       {/* System Admin Status Footer */}
-      <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+      <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-              alt="Admin"
-              className="w-9 h-9 rounded-full object-cover border-2 border-emerald-500 shadow-xs"
-            />
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-sm shadow-sm">
+              {currentUser?.email?.[0]?.toUpperCase() || 'A'}
+            </div>
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-slate-800 truncate">Sarah Connor</p>
+            <p className="text-xs font-bold text-slate-800 truncate">{currentUser?.email || 'Admin'}</p>
             <p className="text-[11px] text-slate-400 truncate flex items-center gap-1">
               <ShieldCheck className="w-3 h-3 text-emerald-600" /> Super Admin
             </p>
           </div>
         </div>
+        {/* Logout Button */}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold border border-rose-200 transition-all cursor-pointer"
+        >
+          <LogOut className="w-3.5 h-3.5" /> Sign Out
+        </button>
       </div>
     </aside>
   );

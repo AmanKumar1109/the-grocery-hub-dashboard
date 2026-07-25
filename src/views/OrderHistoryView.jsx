@@ -135,7 +135,9 @@ export default function OrderHistoryView() {
                       <td className="py-4 px-6 font-bold text-emerald-700">{order.id}</td>
                       <td className="py-4 px-6">
                         <p className="font-bold text-slate-800">{order.customerName}</p>
-                        <p className="text-[11px] text-slate-400 truncate max-w-xs">{order.deliveryAddress}</p>
+                        <p className="text-[11px] text-slate-400 truncate max-w-xs">
+                          {typeof order.address === 'string' ? order.address : (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : (order.deliveryAddress ? [order.deliveryAddress.street, order.deliveryAddress.city].filter(Boolean).join(', ') : 'Store Pickup'))}
+                        </p>
                       </td>
                       <td className="py-4 px-6 font-medium text-slate-500">{order.orderTime}</td>
                       <td className="py-4 px-6">
@@ -285,7 +287,9 @@ export default function OrderHistoryView() {
                 </div>
                 <div>
                   <p className="text-[11px] text-slate-400 font-bold uppercase">Address</p>
-                  <p className="font-medium text-slate-700">{activeModalOrder.deliveryAddress}</p>
+                  <p className="font-medium text-slate-700">
+                    {typeof activeModalOrder.address === 'string' ? activeModalOrder.address : (typeof activeModalOrder.deliveryAddress === 'string' ? activeModalOrder.deliveryAddress : (activeModalOrder.deliveryAddress ? [activeModalOrder.deliveryAddress.street, activeModalOrder.deliveryAddress.city].filter(Boolean).join(', ') : 'Store Pickup'))}
+                  </p>
                 </div>
               </div>
 

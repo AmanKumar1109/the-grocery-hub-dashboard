@@ -5,7 +5,7 @@ import {
   Wallet,
   ShoppingBag,
   Users,
-  Utensils,
+  Package,
   ArrowUpRight,
   Clock,
   CheckCircle2,
@@ -129,10 +129,10 @@ export default function DashboardView() {
             </div>
           </div>
 
-          {/* Quick Fleet & Kitchen Health */}
+          {/* Quick Fleet & Store Health */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5 flex flex-col justify-between gsap-fade">
             <div>
-              <h3 className="font-bold text-slate-800 text-base mb-1">Fleet & Kitchen Health</h3>
+              <h3 className="font-bold text-slate-800 text-base mb-1">Fleet & Store Health</h3>
               <p className="text-xs text-slate-400">Live stats from Firestore Database</p>
             </div>
 
@@ -153,11 +153,11 @@ export default function DashboardView() {
               <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-slate-800 text-white flex items-center justify-center">
-                    <Utensils className="w-5 h-5" />
+                    <Package className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-slate-800">Active Menu Items</p>
-                    <p className="text-[11px] text-slate-500">{items.filter(i => i.inStock).length} items currently in stock</p>
+                    <p className="text-xs font-semibold text-slate-800">Active Grocery Products</p>
+                    <p className="text-[11px] text-slate-500">{items.filter(i => i.inStock).length} products currently in stock</p>
                   </div>
                 </div>
                 <span className="text-base font-extrabold text-slate-800">{items.length}</span>
@@ -226,7 +226,9 @@ export default function DashboardView() {
                       <td className="py-4 px-6 font-bold text-emerald-700">{order.id}</td>
                       <td className="py-4 px-6">
                         <p className="font-semibold text-slate-800">{order.customerName}</p>
-                        <p className="text-[11px] text-slate-400 truncate max-w-xs">{order.deliveryAddress}</p>
+                        <p className="text-[11px] text-slate-400 truncate max-w-xs">
+                          {typeof order.address === 'string' ? order.address : (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : (order.deliveryAddress ? [order.deliveryAddress.street, order.deliveryAddress.city].filter(Boolean).join(', ') : 'Store Pickup'))}
+                        </p>
                       </td>
                       <td className="py-4 px-6">
                         {order.items ? order.items.map(i => `${i.quantity}x ${i.name}`).join(', ') : 'No items'}

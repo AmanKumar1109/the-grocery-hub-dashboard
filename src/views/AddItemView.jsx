@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlusCircle, UtensilsCrossed, ArrowLeft, Image as ImageIcon, Check, FolderPlus, X } from 'lucide-react';
+import { PlusCircle, Package, ArrowLeft, Image as ImageIcon, Check, FolderPlus, X } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
 import { useNavigate, Link } from 'react-router-dom';
@@ -10,10 +10,10 @@ export default function AddItemView() {
 
   const [formData, setFormData] = useState({
     name: '',
-    category: categories[0] || 'Burgers',
+    category: '',
     price: '',
-    description: '',
-    image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&auto=format&fit=crop&q=80'
+    inStock: true,
+    image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&auto=format&fit=crop&q=80'
   });
 
   const [isAddCatModalOpen, setIsAddCatModalOpen] = useState(false);
@@ -21,14 +21,6 @@ export default function AddItemView() {
   const [catErr, setCatErr] = useState('');
   const [successMsg, setSuccessMsg] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const presetImages = [
-    { label: 'Burger', url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&auto=format&fit=crop&q=80' },
-    { label: 'Pizza', url: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=400&auto=format&fit=crop&q=80' },
-    { label: 'Salad', url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&auto=format&fit=crop&q=80' },
-    { label: 'Drink', url: 'https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=400&auto=format&fit=crop&q=80' },
-    { label: 'Dessert', url: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&auto=format&fit=crop&q=80' }
-  ];
 
   const handleCreateCategory = async (e) => {
     e.preventDefault();
@@ -52,7 +44,10 @@ export default function AddItemView() {
 
     try {
       setIsSubmitting(true);
-      await addItem(formData);
+      await addItem({
+        ...formData,
+        category: formData.category.trim() || 'General'
+      });
       setSuccessMsg(true);
       setTimeout(() => {
         navigate('/items');
@@ -67,8 +62,8 @@ export default function AddItemView() {
   return (
     <div className="flex-1 min-h-screen bg-slate-50/50 flex flex-col">
       <Header
-        title="Add New Food Item"
-        subtitle="Create a new entry in your menu catalog in Indian Rupees (₹)"
+        title="Add New Grocery Product"
+        subtitle="Create a new entry in your grocery catalog in Indian Rupees (₹)"
       />
 
       <main className="p-8 max-w-4xl w-full mx-auto flex-1 space-y-6">
@@ -76,7 +71,7 @@ export default function AddItemView() {
           to="/items"
           className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Catalog
+          <ArrowLeft className="w-4 h-4" /> Back to Grocery Catalog
         </Link>
 
         {successMsg && (
@@ -85,8 +80,8 @@ export default function AddItemView() {
               <Check className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-bold text-sm">Food Item Saved Successfully!</p>
-              <p className="text-xs text-emerald-600">Redirecting to items catalog...</p>
+              <p className="font-bold text-sm">Grocery Product Saved Successfully!</p>
+              <p className="text-xs text-emerald-600">Redirecting to grocery catalog...</p>
             </div>
           </div>
         )}
@@ -94,13 +89,13 @@ export default function AddItemView() {
         <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Item Name */}
+              {/* Product Name */}
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-2">Food Item Name *</label>
+                <label className="text-xs font-bold text-slate-700 block mb-2">Grocery Product Name *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Paneer Butter Masala"
+                  placeholder="e.g. Fresh Organic Tomatoes"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
@@ -110,7 +105,7 @@ export default function AddItemView() {
               {/* Category Dropdown & Quick Add Button */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-slate-700">Category *</label>
+                  <label className="text-xs font-bold text-slate-700">Category (Optional)</label>
                   <button
                     type="button"
                     onClick={() => {
@@ -127,6 +122,7 @@ export default function AddItemView() {
                   onChange={e => setFormData({ ...formData, category: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 >
+                  <option value="">General / None (No Category)</option>
                   {categories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
@@ -140,62 +136,41 @@ export default function AddItemView() {
                   type="number"
                   step="0.01"
                   required
-                  placeholder="e.g. 240.00"
+                  placeholder="e.g. 45.00"
                   value={formData.price}
                   onChange={e => setFormData({ ...formData, price: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
               </div>
 
-              {/* Custom Image URL */}
+              {/* Stock Status Availability Selector */}
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-2">Image URL *</label>
-                <input
-                  type="url"
-                  required
-                  placeholder="https://images.unsplash.com/..."
-                  value={formData.image}
-                  onChange={e => setFormData({ ...formData, image: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
+                <label className="text-xs font-bold text-slate-700 block mb-2">Stock Availability *</label>
+                <select
+                  value={formData.inStock ? 'true' : 'false'}
+                  onChange={e => setFormData({ ...formData, inStock: e.target.value === 'true' })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                >
+                  <option value="true">In Stock (Available)</option>
+                  <option value="false">Out of Stock (Unavailable)</option>
+                </select>
               </div>
-            </div>
 
-            {/* Image Preset Selectors */}
+            {/* Custom Image URL */}
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-2">Or Choose Image Preset</label>
-              <div className="flex flex-wrap gap-3">
-                {presetImages.map(img => (
-                  <button
-                    key={img.label}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, image: img.url })}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
-                      formData.image === img.url
-                        ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
-                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <ImageIcon className="w-3.5 h-3.5" />
-                    {img.label}
-                  </button>
-                ))}
-              </div>
+              <label className="text-xs font-bold text-slate-700 block mb-2">Image URL *</label>
+              <input
+                type="url"
+                required
+                placeholder="https://images.unsplash.com/..."
+                value={formData.image}
+                onChange={e => setFormData({ ...formData, image: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
             </div>
+          </div>
 
-            {/* Description */}
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-2">Item Description</label>
-              <textarea
-                rows="4"
-                placeholder="Write a tasty description of ingredients, serving size..."
-                value={formData.description}
-                onChange={e => setFormData({ ...formData, description: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              ></textarea>
-            </div>
-
-            {/* Submit Button */}
+          {/* Submit Button */}
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
               <button
                 type="button"
@@ -210,7 +185,7 @@ export default function AddItemView() {
                 className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-sm flex items-center gap-2"
               >
                 <PlusCircle className="w-4 h-4" />
-                {isSubmitting ? 'Saving Item...' : 'Save Item To Menu'}
+                {isSubmitting ? 'Saving Product...' : 'Save Product To Catalog'}
               </button>
             </div>
           </form>
@@ -234,7 +209,7 @@ export default function AddItemView() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Main Course, Snacks..."
+                  placeholder="e.g. Fresh Vegetables, Organic Fruits..."
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500"
@@ -264,3 +239,4 @@ export default function AddItemView() {
     </div>
   );
 }
+

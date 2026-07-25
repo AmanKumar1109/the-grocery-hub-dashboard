@@ -14,7 +14,11 @@ import {
   X,
   AlertTriangle,
   Printer,
-  FileText
+  FileText,
+  RefreshCw,
+  Eye,
+  User,
+  CreditCard
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
@@ -24,6 +28,18 @@ import gsap from 'gsap';
 export default function CurrentOrdersView() {
   const { orders, staff, cancelReasonsList, updateOrderStatus, cancelOrder, assignDeliveryPartner } = useAdmin();
   const [filterStatus, setFilterStatus] = useState('All');
+
+  // Pending status map for stage selection before rolling update
+  const [pendingStatusMap, setPendingStatusMap] = useState({});
+  const [toastMessage, setToastMessage] = useState(null);
+
+  // View Customer Details Modal state
+  const [viewDetailsOrder, setViewDetailsOrder] = useState(null);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   // Cancel order modal state
   const [cancellingOrder, setCancellingOrder] = useState(null);
@@ -35,10 +51,12 @@ export default function CurrentOrdersView() {
 
   const containerRef = useRef(null);
 
-  const currentOrders = orders.filter(o => o.isCurrent);
+  const currentOrders = orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled');
 
   const filteredOrders = currentOrders.filter(order => {
     if (filterStatus === 'All') return true;
+    if (filterStatus === 'Order Received') return order.status === 'Order Received' || order.status === 'Pending';
+    if (filterStatus === 'Packing') return order.status === 'Packing' || order.status === 'Preparing';
     return order.status === filterStatus;
   });
 
@@ -59,10 +77,19 @@ export default function CurrentOrdersView() {
     await cancelOrder(cancellingOrder.id, finalReason);
     setCancellingOrder(null);
     setCustomReasonText('');
+    showToast(`Order #${cancellingOrder.id} cancelled.`);
   };
 
   return (
-    <div className="flex-1 min-h-screen bg-slate-50/50 flex flex-col">
+    <div className="flex-1 min-h-screen bg-slate-50/50 flex flex-col relative">
+      {/* Toast alert */}
+      {toastMessage && (
+        <div className="fixed top-5 right-5 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl border border-slate-800 flex items-center gap-3 animate-bounce">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+          <span className="text-xs font-bold">{toastMessage}</span>
+        </div>
+      )}
+
       <Header
         title="Live Current Orders"
         subtitle="Manage live customer orders in Indian Rupees (₹), print thermal receipts, update status, and assign partners"
@@ -72,8 +99,10 @@ export default function CurrentOrdersView() {
         {/* Status Filter Tabs & Summary */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <div className="flex items-center gap-2">
-            {['All', 'Pending', 'Preparing', 'Out for Delivery'].map((status) => {
-              const count = status === 'All' ? currentOrders.length : currentOrders.filter(o => o.status === status).length;
+            {['All', 'Order Received', 'Packing', 'Out for Delivery'].map((status) => {
+              const count = status === 'All'
+                ? currentOrders.length
+                : currentOrders.filter(o => status === 'Order Received' ? (o.status === 'Order Received' || o.status === 'Pending') : status === 'Packing' ? (o.status === 'Packing' || o.status === 'Preparing') : o.status === status).length;
               return (
                 <button
                   key={status}
@@ -97,7 +126,7 @@ export default function CurrentOrdersView() {
 
           <div className="text-xs font-medium text-slate-500 flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>{currentOrders.length} active orders requiring kitchen/delivery action</span>
+            <span>{currentOrders.length} active orders requiring store/delivery action</span>
           </div>
         </div>
 
@@ -120,11 +149,19 @@ export default function CurrentOrdersView() {
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>
                       <span className="text-xs font-bold text-emerald-600">{order.id}</span>
-                      <h3 className="font-extrabold text-slate-800 text-base">{order.customerName}</h3>
+                      <h3 className="font-extrabold text-slate-800 text-base">{order.customerName || 'Valued Customer'}</h3>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400 font-medium">{order.orderTime}</span>
+                      {/* Customer Details Button */}
+                      <button
+                        onClick={() => setViewDetailsOrder(order)}
+                        className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-extrabold border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer"
+                        title="View Customer Details"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Details
+                      </button>
+
                       {/* Cancel Order Button */}
                       <button
                         onClick={() => {
@@ -132,7 +169,7 @@ export default function CurrentOrdersView() {
                           setCustomReasonText('');
                           setCancellingOrder(order);
                         }}
-                        className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold border border-rose-200 flex items-center gap-1 transition-colors"
+                        className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold border border-rose-200 flex items-center gap-1 transition-colors cursor-pointer"
                         title="Cancel Order"
                       >
                         <Ban className="w-3.5 h-3.5" /> Cancel
@@ -143,25 +180,31 @@ export default function CurrentOrdersView() {
                   <div className="space-y-1 text-xs text-slate-600">
                     <p className="flex items-center gap-2 text-slate-700 font-medium">
                       <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span className="truncate">{order.deliveryAddress}</span>
+                      <span className="truncate">
+                        {typeof order.address === 'string' ? order.address : (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : `${order.deliveryAddress?.street || ''}, ${order.deliveryAddress?.city || ''}`)}
+                      </span>
                     </p>
                     <p className="flex items-center gap-2 text-slate-500">
                       <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      {order.customerPhone}
+                      {order.customerPhone || 'N/A'}
                     </p>
                   </div>
                 </div>
 
-                {/* Ordered Food Items List */}
+                {/* Ordered Grocery Items List */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ordered Items</p>
                   <div className="space-y-1">
-                    {order.items && order.items.map((item, i) => (
-                      <div key={i} className="flex justify-between text-xs text-slate-700 font-medium">
-                        <span>{item.quantity}x {item.name}</span>
-                        <span className="font-bold text-slate-900">₹{(item.quantity * item.price).toFixed(2)}</span>
-                      </div>
-                    ))}
+                    {order.items && order.items.map((item, i) => {
+                      const qty = item.qty || item.quantity || 1;
+                      const price = item.price || 0;
+                      return (
+                        <div key={i} className="flex justify-between text-xs text-slate-700 font-medium">
+                          <span>{qty}x {item.name}</span>
+                          <span className="font-bold text-slate-900">₹{(qty * price).toFixed(2)}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="pt-2 border-t border-slate-200 flex justify-between text-xs font-bold text-slate-900">
                     <span>Total Amount</span>
@@ -201,23 +244,56 @@ export default function CurrentOrdersView() {
                   </div>
 
                   {/* Order Progress Status Controls */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 block">Update Order Status</label>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {['Pending', 'Preparing', 'Out for Delivery', 'Delivered'].map((st) => (
-                        <button
-                          key={st}
-                          onClick={() => updateOrderStatus(order.id, st)}
-                          className={`py-2 rounded-xl text-[11px] font-bold transition-all ${
-                            order.status === st
-                              ? 'bg-emerald-600 text-white shadow-xs'
-                              : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                          }`}
-                        >
-                          {st === 'Out for Delivery' ? 'Delivery' : st}
-                        </button>
-                      ))}
+                  <div className="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <RefreshCw className="w-3.5 h-3.5 text-emerald-600" /> Order Tracking Stage
+                      </label>
+                      <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        Current: {order.status || 'Order Received'}
+                      </span>
                     </div>
+
+                    {/* Status Step Selection Buttons */}
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {[
+                        { label: 'Received', value: 'Order Received' },
+                        { label: 'Packing', value: 'Packing' },
+                        { label: 'Out for Delivery', value: 'Out for Delivery' },
+                        { label: 'Delivered', value: 'Delivered' }
+                      ].map((st) => {
+                        const selectedVal = pendingStatusMap[order.id] || order.status || 'Order Received';
+                        const isSelected = selectedVal === st.value || (selectedVal === 'Pending' && st.value === 'Order Received') || (selectedVal === 'Preparing' && st.value === 'Packing');
+
+                        return (
+                          <button
+                            key={st.value}
+                            type="button"
+                            onClick={() => setPendingStatusMap(prev => ({ ...prev, [order.id]: st.value }))}
+                            className={`py-2 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer border ${
+                              isSelected
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {st.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Roll / Update Status Button */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const targetStatus = pendingStatusMap[order.id] || order.status || 'Order Received';
+                        await updateOrderStatus(order.id, targetStatus);
+                        showToast(`Order #${order.id} status updated to ${targetStatus}!`);
+                      }}
+                      className="w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 text-xs font-black rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4 stroke-[2.5]" /> Update & Roll Status Live
+                    </button>
                   </div>
 
                   {/* PRINT BILL / THERMAL RECEIPT BUTTON UNDER EVERY ORDER */}
@@ -230,13 +306,8 @@ export default function CurrentOrdersView() {
                           : 'bg-slate-900 hover:bg-slate-800 text-white'
                       }`}
                     >
-                      <Printer className="w-4 h-4 text-emerald-400" />
-                      <span>{order.isBillPrinted ? 'Print Bill Again (Thermal POS)' : 'Print Bill (POS Printer)'}</span>
-                      {order.isBillPrinted && (
-                        <span className="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full font-extrabold ml-1">
-                          Printed
-                        </span>
-                      )}
+                      <Printer className="w-4 h-4" />
+                      <span>{order.isBillPrinted ? 'Reprint Bill / Thermal Receipt' : 'Print Bill / Thermal Receipt'}</span>
                     </button>
                   </div>
                 </div>
@@ -246,12 +317,112 @@ export default function CurrentOrdersView() {
         )}
       </main>
 
-      {/* THERMAL RECEIPT PRINT MODAL */}
+      {/* THERMAL POS RECEIPT MODAL */}
       {printingOrder && (
         <ThermalReceiptModal
           order={printingOrder}
           onClose={() => setPrintingOrder(null)}
         />
+      )}
+
+      {/* Customer Details Modal */}
+      {viewDetailsOrder && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-6 shadow-2xl border border-slate-100 relative animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-emerald-100 text-emerald-700 rounded-2xl">
+                  <User className="w-6 h-6 stroke-[2.5]" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-emerald-600">{viewDetailsOrder.id}</span>
+                  <h3 className="text-lg font-black text-slate-900">Customer Details</h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewDetailsOrder(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Customer Info Card */}
+            <div className="space-y-4">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Customer Name</p>
+                  <p className="text-base font-black text-slate-900 mt-0.5">{viewDetailsOrder.customerName || 'Valued Customer'}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-200/60">
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Phone Number</p>
+                    <a
+                      href={`tel:${viewDetailsOrder.customerPhone}`}
+                      className="text-xs font-bold text-emerald-700 hover:underline flex items-center gap-1.5 mt-0.5"
+                    >
+                      <Phone className="w-3.5 h-3.5" /> {viewDetailsOrder.customerPhone || 'N/A'}
+                    </a>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Payment Mode</p>
+                    <p className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5 mt-0.5">
+                      <CreditCard className="w-3.5 h-3.5 text-amber-500" /> {viewDetailsOrder.paymentMethod || 'Cash on Delivery'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Delivery Address Details */}
+              <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-200/60 space-y-1.5">
+                <p className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-600" /> Delivery Address
+                </p>
+                <p className="text-xs font-bold text-slate-800 leading-relaxed">
+                  {typeof viewDetailsOrder.address === 'string'
+                    ? viewDetailsOrder.address
+                    : (typeof viewDetailsOrder.deliveryAddress === 'string'
+                      ? viewDetailsOrder.deliveryAddress
+                      : `${viewDetailsOrder.deliveryAddress?.street || ''}, ${viewDetailsOrder.deliveryAddress?.locality || ''}, ${viewDetailsOrder.deliveryAddress?.city || ''} ${viewDetailsOrder.deliveryAddress?.pincode || ''}`)}
+                </p>
+              </div>
+
+              {/* Items Breakdown */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-2">
+                <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Ordered Items</p>
+                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                  {viewDetailsOrder.items && viewDetailsOrder.items.map((item, i) => {
+                    const qty = item.qty || item.quantity || 1;
+                    const price = item.price || 0;
+                    return (
+                      <div key={i} className="flex justify-between text-xs text-slate-700 font-bold">
+                        <span>{qty}x {item.name}</span>
+                        <span className="font-extrabold text-slate-900">₹{(qty * price).toFixed(2)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="pt-2 border-t border-slate-200 flex justify-between text-xs font-extrabold text-slate-900">
+                  <span>Total Payable</span>
+                  <span className="text-emerald-700 text-sm font-black">₹{(viewDetailsOrder.totalAmount || 0).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Close Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setViewDetailsOrder(null)}
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-2xl transition-all shadow-md cursor-pointer"
+              >
+                Close Customer Details
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* CANCEL ORDER MODAL WITH REASON DROPDOWN */}

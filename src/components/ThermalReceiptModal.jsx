@@ -56,9 +56,9 @@ export default function ThermalReceiptModal({ order, onClose }) {
             
             {/* Store Header */}
             <div className="text-center space-y-1">
-              <h2 className="font-extrabold text-sm uppercase tracking-widest">GROCERY HUB FOODS</h2>
+              <h2 className="font-extrabold text-sm uppercase tracking-widest">GROCERY HUB SUPERMARKET</h2>
               <p className="text-[10px]">104 Central Boulevard, City Center</p>
-              <p className="text-[10px]">GSTIN: 27AAAAA0000A1Z5 | Tel: 1800-FOODS</p>
+              <p className="text-[10px]">GSTIN: 27AAAAA0000A1Z5 | Tel: 1800-GROCERY</p>
               <div className="border-b border-dashed border-slate-400 my-2"></div>
             </div>
 
@@ -129,7 +129,9 @@ export default function ThermalReceiptModal({ order, onClose }) {
             {/* Delivery Address */}
             <div>
               <p className="font-bold uppercase text-[9px]">DELIVERY ADDRESS:</p>
-              <p className="text-[10px] break-words">{order.deliveryAddress}</p>
+              <p className="text-[10px] break-words">
+                {typeof order.address === 'string' ? order.address : (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : (order.deliveryAddress ? [order.deliveryAddress.street, order.deliveryAddress.city].filter(Boolean).join(', ') : 'Store Pickup'))}
+              </p>
             </div>
 
             {/* Barcode Simulation */}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  UtensilsCrossed,
+  Package,
   Plus,
   Search,
   Eye,
@@ -21,7 +21,7 @@ import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 
 export default function ItemsView() {
-  const { items, categories, addCategory, editItem, toggleItemVisibility, deleteItem } = useAdmin();
+  const { items, categories, addCategory, editItem, toggleItemVisibility, toggleItemStock, deleteItem } = useAdmin();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -40,7 +40,6 @@ export default function ItemsView() {
     category: '',
     price: '',
     inStock: true,
-    description: '',
     image: ''
   });
 
@@ -60,8 +59,7 @@ export default function ItemsView() {
 
   const filteredItems = items.filter(item => {
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-    const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (item.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -88,7 +86,6 @@ export default function ItemsView() {
       category: item.category,
       price: item.price,
       inStock: item.inStock,
-      description: item.description,
       image: item.image
     });
   };
@@ -110,90 +107,94 @@ export default function ItemsView() {
   return (
     <div className="flex-1 min-h-screen bg-slate-50/50 flex flex-col">
       <Header
-        title="Food Items Catalog"
-        subtitle="Manage food categories, item listings in Indian Rupees (₹), toggle visibility (Eye/EyeOff), edit and remove items"
+        title="Grocery Products Catalog"
+        subtitle="Manage grocery categories, product listings in Indian Rupees (₹), toggle visibility (Eye/EyeOff), edit and remove products"
       />
 
       <main className="p-8 space-y-6 flex-1 max-w-7xl w-full mx-auto">
-        {/* Top Control Bar */}
-        <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-          {/* Search & Category Filter */}
-          <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto flex-1">
-            <div className="relative w-full sm:w-64 shrink-0">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search food item..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            {/* Category Pills + Add Category Button */}
-            <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none flex-1">
-              {allCategoryTabs.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                    selectedCategory === cat
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-
-              {/* Add Category Trigger Button */}
-              <button
-                onClick={() => {
-                  setCategoryError('');
-                  setIsAddCategoryModalOpen(true);
-                }}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 transition-colors"
-                title="Create New Category"
-              >
-                <FolderPlus className="w-3.5 h-3.5" /> + Category
-              </button>
-            </div>
+        {/* Top Header & Actions Bar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+          <div>
+            <h2 className="text-base font-bold text-slate-800">Supermarket Catalog Management</h2>
+            <p className="text-xs text-slate-400">View, search, filter, and manage your supermarket products</p>
           </div>
 
-          {/* Action Buttons: Add Item & Add Category */}
-          <div className="flex items-center gap-2 w-full xl:w-auto justify-end">
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-start sm:justify-end">
             <button
               onClick={() => {
                 setCategoryError('');
                 setIsAddCategoryModalOpen(true);
               }}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs flex items-center gap-2 transition-colors"
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-2 transition-colors cursor-pointer"
             >
               <FolderPlus className="w-4 h-4 text-emerald-600" /> Add Category
             </button>
 
             <Link
               to="/items/add"
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs flex items-center gap-2 transition-colors shadow-sm"
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
             >
-              <Plus className="w-4 h-4" /> Add Food Item
+              <Plus className="w-4 h-4" /> Add Grocery Product
             </Link>
+          </div>
+        </div>
+
+        {/* Search Bar & Horizontal Category Filter Pills */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center gap-4 min-w-0">
+          {/* Search Bar */}
+          <div className="relative w-full md:w-72 shrink-0">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search grocery item..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+            />
+          </div>
+
+          {/* Category Filter Pills (Smooth scroll with overflow-x-auto min-w-0) */}
+          <div className="flex items-center gap-2 overflow-x-auto min-w-0 w-full py-1 scrollbar-none">
+            {allCategoryTabs.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                  selectedCategory === cat
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+
+            <button
+              onClick={() => {
+                setCategoryError('');
+                setIsAddCategoryModalOpen(true);
+              }}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              title="Create New Category"
+            >
+              <FolderPlus className="w-3.5 h-3.5" /> + Category
+            </button>
           </div>
         </div>
 
         {/* Items Grid / Catalog */}
         {filteredItems.length === 0 ? (
           <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-3">
-            <UtensilsCrossed className="w-12 h-12 text-slate-300 mx-auto" />
-            <h3 className="text-base font-bold text-slate-700">No items found</h3>
+            <Package className="w-12 h-12 text-slate-300 mx-auto" />
+            <h3 className="text-base font-bold text-slate-700">No products found</h3>
             <p className="text-xs text-slate-400">
-              No food items added in Firestore database under "{selectedCategory}". Click below to add a new food item.
+              No grocery products added in Firestore database under "{selectedCategory}". Click below to add a new product.
             </p>
             <Link
               to="/items/add"
               className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs mt-2"
             >
-              <Plus className="w-4 h-4" /> Add New Food Item
+              <Plus className="w-4 h-4" /> Add New Grocery Product
             </Link>
           </div>
         ) : (
@@ -219,7 +220,7 @@ export default function ItemsView() {
                     />
                     <div className="absolute top-3 left-3 flex items-center gap-2">
                       <span className="px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-slate-800 font-bold text-[11px] shadow-xs">
-                        {item.category}
+                        {item.category || 'General'}
                       </span>
                     </div>
 
@@ -233,14 +234,18 @@ export default function ItemsView() {
                         {isVisible ? 'Visible' : 'Hidden'}
                       </span>
 
-                      {/* Stock Status Badge */}
-                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold shadow-xs ${
-                        item.inStock
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-rose-500 text-white'
-                      }`}>
-                        {item.inStock ? 'In Stock' : 'Out of Stock'}
-                      </span>
+                      {/* Stock Status Badge (Clickable One-Click Toggle) */}
+                      <button
+                        onClick={() => toggleItemStock(item.id, item.inStock !== false)}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold shadow-xs transition-transform active:scale-95 cursor-pointer ${
+                          item.inStock !== false
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                            : 'bg-rose-600 hover:bg-rose-700 text-white'
+                        }`}
+                        title={item.inStock !== false ? 'Click to set Out of Stock' : 'Click to set In Stock'}
+                      >
+                        {item.inStock !== false ? 'In Stock' : 'Out of Stock'}
+                      </button>
                     </div>
                   </div>
 
@@ -256,7 +261,6 @@ export default function ItemsView() {
                           {item.rating || 5.0}
                         </div>
                       </div>
-                      <p className="text-xs text-slate-500 line-clamp-2 mt-1">{item.description}</p>
                     </div>
 
                     <div className="flex items-center justify-between pt-3 border-t border-slate-100">
@@ -265,8 +269,22 @@ export default function ItemsView() {
                         <span className="text-lg font-extrabold text-slate-800">₹{(item.price || 0).toFixed(2)}</span>
                       </div>
 
-                      {/* Actions: Eye Visibility Toggle, Edit, Delete */}
+                      {/* Actions: Stock Toggle, Eye Visibility Toggle, Edit, Delete */}
                       <div className="flex items-center gap-1.5">
+                        {/* Quick Stock Toggle Button */}
+                        <button
+                          onClick={() => toggleItemStock(item.id, item.inStock !== false)}
+                          className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors border flex items-center gap-1 cursor-pointer ${
+                            item.inStock !== false
+                              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                              : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                          }`}
+                          title={item.inStock !== false ? 'Click to mark Out of Stock' : 'Click to mark In Stock'}
+                        >
+                          <Package className="w-3.5 h-3.5" />
+                          {item.inStock !== false ? 'In Stock' : 'Out of Stock'}
+                        </button>
+
                         {/* Eye / EyeOff Visibility Toggle Button */}
                         <button
                           onClick={() => toggleItemVisibility(item.id, isVisible)}
@@ -316,7 +334,7 @@ export default function ItemsView() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-800">Add New Category</h3>
-                  <p className="text-xs text-slate-400">Create a new food category in Firestore</p>
+                  <p className="text-xs text-slate-400">Create a new grocery category in Firestore</p>
                 </div>
               </div>
               <button onClick={() => setIsAddCategoryModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-600">
@@ -394,12 +412,13 @@ export default function ItemsView() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Category</label>
+                  <label className="font-bold text-slate-700 block mb-1">Category (Optional)</label>
                   <select
                     value={editFormData.category}
                     onChange={e => setEditFormData({ ...editFormData, category: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
                   >
+                    <option value="">General / None (No Category)</option>
                     {categories.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
@@ -441,16 +460,6 @@ export default function ItemsView() {
                 </select>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Description</label>
-                <textarea
-                  rows="3"
-                  value={editFormData.description}
-                  onChange={e => setEditFormData({ ...editFormData, description: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
-                ></textarea>
-              </div>
-
               <div className="pt-4 flex justify-end gap-3">
                 <button
                   type="button"
@@ -479,7 +488,7 @@ export default function ItemsView() {
               <Trash2 className="w-6 h-6" />
             </div>
             <div className="text-center">
-              <h3 className="text-base font-bold text-slate-800">Delete Menu Item?</h3>
+              <h3 className="text-base font-bold text-slate-800">Delete Product?</h3>
               <p className="text-xs text-slate-500 mt-1">
                 Are you sure you want to remove <strong>"{deletingItem.name}"</strong>? This will remove it from Firestore database.
               </p>
