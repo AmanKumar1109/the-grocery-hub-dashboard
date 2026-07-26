@@ -279,18 +279,25 @@ export const AdminProvider = ({ children }) => {
       await addCategory(finalCategory);
     }
     const itemId = `ITEM-${Math.floor(100 + Math.random() * 900)}`;
+    const mrp = parseFloat(newItem.sellingPrice) || 0;
+    const salePrice = parseFloat(newItem.price) || 0;
+    const offPercentage = (mrp > 0 && salePrice > 0 && mrp > salePrice)
+      ? Math.round(((mrp - salePrice) / mrp) * 100)
+      : 0;
     const createdItem = {
       ...newItem,
       category: finalCategory,
       id: itemId,
-      price: parseFloat(newItem.price),
+      price: salePrice,
+      sellingPrice: mrp,
+      offPercentage,
       rating: 5.0,
       inStock: newItem.inStock !== false,
       isVisible: true, // Default visible
       createdAt: new Date().toISOString()
     };
     await setDoc(doc(db, 'items', itemId), createdItem);
-    await addAuditLog('ITEM_CREATED', `Added grocery product "${createdItem.name}" (₹${createdItem.price}) to Firestore database`, 'Catalog', 'success');
+    await addAuditLog('ITEM_CREATED', `Added grocery product "${createdItem.name}" (MRP: ₹${mrp}, Sale: ₹${salePrice}, ${offPercentage}% OFF) to Firestore database`, 'Catalog', 'success');
     return createdItem;
   };
 
@@ -299,10 +306,17 @@ export const AdminProvider = ({ children }) => {
     if (finalCategory && finalCategory !== 'General' && !categories.includes(finalCategory)) {
       await addCategory(finalCategory);
     }
+    const mrp = parseFloat(updatedFields.sellingPrice) || 0;
+    const salePrice = parseFloat(updatedFields.price) || 0;
+    const offPercentage = (mrp > 0 && salePrice > 0 && mrp > salePrice)
+      ? Math.round(((mrp - salePrice) / mrp) * 100)
+      : 0;
     await updateDoc(doc(db, 'items', id), {
       ...updatedFields,
       category: finalCategory,
-      price: parseFloat(updatedFields.price)
+      price: salePrice,
+      sellingPrice: mrp,
+      offPercentage
     });
     await addAuditLog('ITEM_UPDATED', `Updated product "${updatedFields.name || id}" in Firestore database`, 'Catalog', 'warning');
   };

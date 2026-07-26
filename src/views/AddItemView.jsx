@@ -12,9 +12,20 @@ export default function AddItemView() {
     name: '',
     category: '',
     price: '',
+    sellingPrice: '',
     inStock: true,
     image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&auto=format&fit=crop&q=80'
   });
+
+  // Calculate off percentage live
+  const offPercentage = (() => {
+    const mrp = parseFloat(formData.sellingPrice);
+    const sale = parseFloat(formData.price);
+    if (mrp > 0 && sale > 0 && mrp > sale) {
+      return Math.round(((mrp - sale) / mrp) * 100);
+    }
+    return null;
+  })();
 
   const [isAddCatModalOpen, setIsAddCatModalOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -40,7 +51,7 @@ export default function AddItemView() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.price) return;
+    if (!formData.name || !formData.price || !formData.sellingPrice) return;
 
     try {
       setIsSubmitting(true);
@@ -50,7 +61,7 @@ export default function AddItemView() {
       });
       setSuccessMsg(true);
       setTimeout(() => {
-        navigate('/items');
+        navigate('/dashboard/items');
       }, 1200);
     } catch (err) {
       console.error("Error adding item:", err);
@@ -129,18 +140,42 @@ export default function AddItemView() {
                 </select>
               </div>
 
-              {/* Price (Rupees) */}
+              {/* Selling Price / MRP */}
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-2">Price (₹) *</label>
+                <label className="text-xs font-bold text-slate-700 block mb-2">MRP / Selling Price (₹) *</label>
                 <input
                   type="number"
                   step="0.01"
                   required
-                  placeholder="e.g. 45.00"
+                  placeholder="e.g. 60.00 (original MRP)"
+                  value={formData.sellingPrice}
+                  onChange={e => setFormData({ ...formData, sellingPrice: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Discounted / Our Price */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-2">
+                  Our Price (₹) *
+                  {offPercentage !== null && (
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 font-bold text-[11px]">
+                      {offPercentage}% OFF
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  placeholder="e.g. 45.00 (discounted price)"
                   value={formData.price}
                   onChange={e => setFormData({ ...formData, price: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
+                {parseFloat(formData.price) >= parseFloat(formData.sellingPrice) && formData.price && formData.sellingPrice && (
+                  <p className="text-[11px] text-rose-500 font-medium mt-1">⚠ Our price must be less than MRP for a discount.</p>
+                )}
               </div>
 
               {/* Stock Status Availability Selector */}
@@ -174,7 +209,7 @@ export default function AddItemView() {
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => navigate('/items')}
+                onClick={() => navigate('/dashboard/items')}
                 className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
               >
                 Cancel

@@ -39,6 +39,7 @@ export default function ItemsView() {
     name: '',
     category: '',
     price: '',
+    sellingPrice: '',
     inStock: true,
     image: ''
   });
@@ -85,6 +86,7 @@ export default function ItemsView() {
       name: item.name,
       category: item.category,
       price: item.price,
+      sellingPrice: item.sellingPrice || '',
       inStock: item.inStock,
       image: item.image
     });
@@ -131,7 +133,7 @@ export default function ItemsView() {
             </button>
 
             <Link
-              to="/items/add"
+              to="/dashboard/items/add"
               className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
             >
               <Plus className="w-4 h-4" /> Add Grocery Product
@@ -191,7 +193,7 @@ export default function ItemsView() {
               No grocery products added in Firestore database under "{selectedCategory}". Click below to add a new product.
             </p>
             <Link
-              to="/items/add"
+              to="/dashboard/items/add"
               className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs mt-2"
             >
               <Plus className="w-4 h-4" /> Add New Grocery Product
@@ -266,7 +268,15 @@ export default function ItemsView() {
                     <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                       <div>
                         <span className="text-[11px] text-slate-400 uppercase font-semibold block">Price</span>
-                        <span className="text-lg font-extrabold text-slate-800">₹{(item.price || 0).toFixed(2)}</span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-lg font-extrabold text-slate-800">₹{(item.price || 0).toFixed(2)}</span>
+                          {item.sellingPrice > 0 && item.sellingPrice > item.price && (
+                            <span className="text-xs text-slate-400 line-through">₹{(item.sellingPrice).toFixed(2)}</span>
+                          )}
+                          {item.offPercentage > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-600 text-[10px] font-bold border border-rose-100">{item.offPercentage}% OFF</span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Actions: Stock Toggle, Eye Visibility Toggle, Edit, Delete */}
@@ -425,16 +435,44 @@ export default function ItemsView() {
                   </select>
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Price (₹)</label>
+                  <label className="font-bold text-slate-700 block mb-1">MRP / Selling Price (₹)</label>
                   <input
                     type="number"
                     step="0.01"
-                    required
-                    value={editFormData.price}
-                    onChange={e => setEditFormData({ ...editFormData, price: e.target.value })}
+                    value={editFormData.sellingPrice}
+                    onChange={e => setEditFormData({ ...editFormData, sellingPrice: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                    placeholder="e.g. 60.00"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Our Price (₹)
+                  {(() => {
+                    const mrp = parseFloat(editFormData.sellingPrice);
+                    const sale = parseFloat(editFormData.price);
+                    if (mrp > 0 && sale > 0 && mrp > sale) {
+                      const pct = Math.round(((mrp - sale) / mrp) * 100);
+                      return (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 font-bold text-[11px]">
+                          {pct}% OFF
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={editFormData.price}
+                  onChange={e => setEditFormData({ ...editFormData, price: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                  placeholder="e.g. 45.00"
+                />
               </div>
 
               <div>
