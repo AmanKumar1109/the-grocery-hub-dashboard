@@ -33,6 +33,7 @@ export default function ComplaintsView() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [issueFilter, setIssueFilter] = useState('all');
   const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
     if (containerRef.current) {
@@ -389,7 +390,10 @@ export default function ComplaintsView() {
                 </h3>
               </div>
               <button
-                onClick={() => setSelectedComplaint(null)}
+                onClick={() => {
+                  setSelectedComplaint(null);
+                  setReplyText('');
+                }}
                 className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
               >
                 <XCircle className="w-6 h-6" />
@@ -438,42 +442,59 @@ export default function ComplaintsView() {
                 </div>
               </div>
 
-              <div>
-                <p className="text-slate-400 font-semibold mb-1">Update Resolution Status</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => {
-                      updateComplaintStatus(selectedComplaint.id, 'in_progress');
-                      setSelectedComplaint(prev => ({ ...prev, status: 'in_progress' }));
-                    }}
-                    className={`py-2 px-3 rounded-xl font-bold border text-xs transition-all ${
-                      selectedComplaint.status === 'in_progress'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                    }`}
-                  >
-                    Mark In Progress
-                  </button>
-                  <button
-                    onClick={() => {
-                      updateComplaintStatus(selectedComplaint.id, 'resolved');
-                      setSelectedComplaint(prev => ({ ...prev, status: 'resolved' }));
-                    }}
-                    className={`py-2 px-3 rounded-xl font-bold border text-xs transition-all ${
-                      selectedComplaint.status === 'resolved'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                    }`}
-                  >
-                    Mark Resolved
-                  </button>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-slate-400 font-semibold mb-1">Admin Reply (Optional)</p>
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder={selectedComplaint.adminReply || "Write a message to the customer..."}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 resize-none h-24"
+                  />
+                </div>
+
+                <div>
+                  <p className="text-slate-400 font-semibold mb-1">Update Resolution Status</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => {
+                        updateComplaintStatus(selectedComplaint.id, 'in_progress', replyText || selectedComplaint.adminReply || null);
+                        setSelectedComplaint(prev => ({ ...prev, status: 'in_progress', adminReply: replyText || prev.adminReply }));
+                        setReplyText('');
+                      }}
+                      className={`py-2 px-3 rounded-xl font-bold border text-xs transition-all ${
+                        selectedComplaint.status === 'in_progress'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                      }`}
+                    >
+                      Mark In Progress
+                    </button>
+                    <button
+                      onClick={() => {
+                        updateComplaintStatus(selectedComplaint.id, 'resolved', replyText || selectedComplaint.adminReply || null);
+                        setSelectedComplaint(prev => ({ ...prev, status: 'resolved', adminReply: replyText || prev.adminReply }));
+                        setReplyText('');
+                      }}
+                      className={`py-2 px-3 rounded-xl font-bold border text-xs transition-all ${
+                        selectedComplaint.status === 'resolved'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                      }`}
+                    >
+                      Mark Resolved
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="pt-2 border-t border-slate-100 flex justify-end">
               <button
-                onClick={() => setSelectedComplaint(null)}
+                onClick={() => {
+                  setSelectedComplaint(null);
+                  setReplyText('');
+                }}
                 className="py-2.5 px-6 bg-slate-900 text-white font-bold text-xs rounded-xl hover:bg-slate-800 transition-colors"
               >
                 Close

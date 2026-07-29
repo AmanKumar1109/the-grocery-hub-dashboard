@@ -497,11 +497,16 @@ export const AdminProvider = ({ children }) => {
   };
 
   // Actions for Complaints
-  const updateComplaintStatus = async (complaintId, newStatus) => {
-    await updateDoc(doc(db, 'complaints', complaintId), {
+  const updateComplaintStatus = async (complaintId, newStatus, adminReply = null) => {
+    const updateData = {
       status: newStatus,
       updatedAt: new Date().toISOString()
-    });
+    };
+    if (adminReply !== null) {
+      updateData.adminReply = adminReply;
+    }
+    
+    await updateDoc(doc(db, 'complaints', complaintId), updateData);
     await addAuditLog('COMPLAINT_STATUS_UPDATE', `Updated status of Complaint #${complaintId} to "${newStatus}"`, 'Support', 'info');
   };
 
