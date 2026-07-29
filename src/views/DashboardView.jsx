@@ -224,6 +224,7 @@ export default function DashboardView() {
                 <tr>
                   <th className="py-3.5 px-6">Order ID</th>
                   <th className="py-3.5 px-6">Customer</th>
+                  <th className="py-3.5 px-6">Order Time</th>
                   <th className="py-3.5 px-6">Items Summary</th>
                   <th className="py-3.5 px-6">Total Amount (₹)</th>
                   <th className="py-3.5 px-6">Assigned Partner</th>
@@ -233,24 +234,29 @@ export default function DashboardView() {
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 {activeOrders.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="py-12 text-center text-slate-400 font-medium">
+                    <td colSpan="7" className="py-12 text-center text-slate-400 font-medium">
                       No active orders found in database.
                     </td>
                   </tr>
                 ) : (
-                  activeOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-4 px-6 font-bold text-emerald-700">{order.id}</td>
-                      <td className="py-4 px-6">
-                        <p className="font-semibold text-slate-800">{order.customerName}</p>
-                        <p className="text-[11px] text-slate-400 truncate max-w-xs">
-                          {typeof order.address === 'string' ? order.address : (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : (order.deliveryAddress ? [order.deliveryAddress.street, order.deliveryAddress.city].filter(Boolean).join(', ') : 'Store Pickup'))}
-                        </p>
-                      </td>
-                      <td className="py-4 px-6">
-                        {order.items ? order.items.map(i => `${i.quantity}x ${i.name}`).join(', ') : 'No items'}
-                      </td>
-                      <td className="py-4 px-6 font-bold text-slate-800">₹{(order.totalAmount || 0).toFixed(2)}</td>
+                  activeOrders.map((order) => {
+                    const timeStr = order.orderTime || (order.createdAt ? new Date(order.createdAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : 'Just now');
+                    return (
+                      <tr key={order.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-4 px-6 font-bold text-emerald-700">{order.id}</td>
+                        <td className="py-4 px-6">
+                          <p className="font-semibold text-slate-800">{order.customerName}</p>
+                          <p className="text-[11px] text-slate-400 truncate max-w-xs">
+                            {typeof order.address === 'string' ? order.address : (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : (order.deliveryAddress ? [order.deliveryAddress.street, order.deliveryAddress.city].filter(Boolean).join(', ') : 'Store Pickup'))}
+                          </p>
+                        </td>
+                        <td className="py-4 px-6 font-semibold text-slate-600 whitespace-nowrap">
+                          {timeStr}
+                        </td>
+                        <td className="py-4 px-6">
+                          {order.items ? order.items.map(i => `${i.quantity || i.qty || 1}x ${i.name}`).join(', ') : 'No items'}
+                        </td>
+                        <td className="py-4 px-6 font-bold text-slate-800">₹{(order.totalAmount || 0).toFixed(2)}</td>
                       <td className="py-4 px-6">
                         {order.assignedPartnerName !== 'Unassigned' ? (
                           <span className="font-medium text-slate-800 flex items-center gap-1.5">
@@ -273,8 +279,9 @@ export default function DashboardView() {
                         </span>
                       </td>
                     </tr>
-                  ))
-                )}
+                  );
+                })
+              )}
               </tbody>
             </table>
           </div>

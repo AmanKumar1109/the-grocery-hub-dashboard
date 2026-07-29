@@ -304,6 +304,7 @@ export const AdminProvider = ({ children }) => {
       inStock: newItem.inStock !== false,
       isVisible: true, // Default visible
       isTrending: newItem.isTrending || false,
+      isBogo: newItem.isBogo || false,
       createdAt: new Date().toISOString()
     };
     await setDoc(doc(db, 'items', itemId), createdItem);
@@ -327,7 +328,8 @@ export const AdminProvider = ({ children }) => {
       price: salePrice,
       sellingPrice: mrp,
       offPercentage,
-      isTrending: !!updatedFields.isTrending
+      isTrending: !!updatedFields.isTrending,
+      isBogo: !!updatedFields.isBogo
     });
     await addAuditLog('ITEM_UPDATED', `Updated product "${updatedFields.name || id}" in Firestore database`, 'Catalog', 'warning');
   };
@@ -338,9 +340,21 @@ export const AdminProvider = ({ children }) => {
     const target = items.find(i => i.id === id);
     await addAuditLog(
       'ITEM_TRENDING_TOGGLED',
-      `Set product "${target?.name || id}" trending status to ${newTrending ? '🔥 Trending' : 'Normal'}`,
+      `Set product "${target?.name || id}" trending status to ${newTrending ? 'Trending' : 'Normal'}`,
       'Catalog',
       newTrending ? 'success' : 'info'
+    );
+  };
+
+  const toggleItemBogo = async (id, currentIsBogo) => {
+    const newBogo = !currentIsBogo;
+    await updateDoc(doc(db, 'items', id), { isBogo: newBogo });
+    const target = items.find(i => i.id === id);
+    await addAuditLog(
+      'ITEM_BOGO_TOGGLED',
+      `Set product "${target?.name || id}" Buy 1 Get 1 Free status to ${newBogo ? 'Active (Buy 1 Get 1)' : 'Inactive'}`,
+      'Catalog',
+      newBogo ? 'success' : 'info'
     );
   };
 
@@ -496,6 +510,7 @@ export const AdminProvider = ({ children }) => {
       addItem,
       editItem,
       toggleItemTrending,
+      toggleItemBogo,
       toggleItemVisibility,
       toggleItemStock,
       deleteItem,

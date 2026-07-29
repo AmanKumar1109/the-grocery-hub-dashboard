@@ -15,6 +15,7 @@ export default function AddItemView() {
     sellingPrice: '',
     inStock: true,
     isTrending: false,
+    isBogo: false,
     image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&auto=format&fit=crop&q=80'
   });
 
@@ -195,7 +196,7 @@ export default function AddItemView() {
               {/* Trending Product Toggle Selector */}
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-2 flex items-center gap-1">
-                  Trending Status 🔥
+                  Trending Status
                 </label>
                 <select
                   value={formData.isTrending ? 'true' : 'false'}
@@ -203,7 +204,22 @@ export default function AddItemView() {
                   className="w-full bg-slate-50 border border-amber-200 rounded-xl px-4 py-2.5 text-xs font-bold text-amber-900 focus:ring-2 focus:ring-amber-400 focus:outline-none"
                 >
                   <option value="false">Normal Product (Standard)</option>
-                  <option value="true">🔥 Mark as Trending Product</option>
+                  <option value="true">Mark as Trending Product</option>
+                </select>
+              </div>
+
+              {/* Buy 1 Get 1 Free Offer Selector */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-2 flex items-center gap-1">
+                  Buy 1 Get 1 Free Offer
+                </label>
+                <select
+                  value={formData.isBogo ? 'true' : 'false'}
+                  onChange={e => setFormData({ ...formData, isBogo: e.target.value === 'true' })}
+                  className="w-full bg-slate-50 border border-indigo-200 rounded-xl px-4 py-2.5 text-xs font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+                >
+                  <option value="false">Standard Single Item</option>
+                  <option value="true">Buy 1 Get 1 Free Offer</option>
                 </select>
               </div>
 

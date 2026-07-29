@@ -51,6 +51,45 @@ export default function CurrentOrdersView() {
 
   const containerRef = useRef(null);
 
+  const formatOrderDateTime = (order) => {
+    const val = order.createdAt || order.orderTime || order.updatedAt;
+    if (!val) return 'Recent Order';
+
+    let date;
+    if (typeof val === 'string') {
+      date = new Date(val);
+    } else if (val && typeof val.toDate === 'function') {
+      date = val.toDate();
+    } else if (val && typeof val.seconds === 'number') {
+      date = new Date(val.seconds * 1000);
+    } else if (val instanceof Date) {
+      date = val;
+    }
+
+    if (!date || isNaN(date.getTime())) {
+      return typeof order.orderTime === 'string' ? order.orderTime : 'Recent Order';
+    }
+
+    const exact = date.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const now = Date.now();
+    const diffSec = Math.max(0, Math.floor((now - date.getTime()) / 1000));
+    let relative = '';
+    if (diffSec < 60) relative = 'Just now';
+    else if (diffSec < 3600) relative = `${Math.floor(diffSec / 60)}m ago`;
+    else if (diffSec < 86400) relative = `${Math.floor(diffSec / 3600)}h ago`;
+    else relative = `${Math.floor(diffSec / 86400)}d ago`;
+
+    return { exact, relative };
+  };
+
   const currentOrders = orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled');
 
   const filteredOrders = currentOrders.filter(order => {
@@ -148,8 +187,17 @@ export default function CurrentOrdersView() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>
-                      <span className="text-xs font-bold text-emerald-600">{order.id}</span>
-                      <h3 className="font-extrabold text-slate-800 text-base">{order.customerName || 'Valued Customer'}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-emerald-600">{order.id}</span>
+                        {/* Order Placement Time Badge */}
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                          <Clock className="w-3 h-3 text-amber-600" />
+                          {typeof formatOrderDateTime(order) === 'object'
+                            ? `${formatOrderDateTime(order).exact} (${formatOrderDateTime(order).relative})`
+                            : formatOrderDateTime(order)}
+                        </span>
+                      </div>
+                      <h3 className="font-extrabold text-slate-800 text-base mt-0.5">{order.customerName || 'Valued Customer'}</h3>
                     </div>
 
                     <div className="flex items-center gap-2">

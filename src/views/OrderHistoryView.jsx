@@ -139,7 +139,9 @@ export default function OrderHistoryView() {
                           {typeof order.address === 'string' ? order.address : (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : (order.deliveryAddress ? [order.deliveryAddress.street, order.deliveryAddress.city].filter(Boolean).join(', ') : 'Store Pickup'))}
                         </p>
                       </td>
-                      <td className="py-4 px-6 font-medium text-slate-500">{order.orderTime}</td>
+                      <td className="py-4 px-6 font-medium text-slate-500 whitespace-nowrap">
+                        {order.orderTime || (order.createdAt ? new Date(order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : 'Recent Order')}
+                      </td>
                       <td className="py-4 px-6">
                         <select
                           value={order.assignedPartnerId || ''}

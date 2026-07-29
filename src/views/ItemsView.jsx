@@ -14,7 +14,8 @@ import {
   Star,
   FolderPlus,
   Tag,
-  Flame
+  Flame,
+  Gift
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
@@ -22,7 +23,7 @@ import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 
 export default function ItemsView() {
-  const { items, categories, addCategory, editItem, toggleItemTrending, toggleItemVisibility, toggleItemStock, deleteItem } = useAdmin();
+  const { items, categories, addCategory, deleteCategory, editItem, toggleItemTrending, toggleItemBogo, toggleItemVisibility, toggleItemStock, deleteItem } = useAdmin();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -96,6 +97,7 @@ export default function ItemsView() {
       sellingPrice: item.sellingPrice || '',
       inStock: item.inStock,
       isTrending: !!item.isTrending,
+      isBogo: !!item.isBogo,
       image: item.image
     });
   };
@@ -137,7 +139,7 @@ export default function ItemsView() {
               }}
               className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-2 transition-colors cursor-pointer"
             >
-              <FolderPlus className="w-4 h-4 text-emerald-600" /> Add Category
+              <FolderPlus className="w-4 h-4 text-emerald-600" /> Manage Categories
             </button>
 
             <Link
@@ -228,15 +230,22 @@ export default function ItemsView() {
                         !isVisible ? 'grayscale-30' : ''
                       }`}
                     />
-                    <div className="absolute top-3 left-3 flex items-center gap-2">
+                    <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
                       <span className="px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-slate-800 font-bold text-[11px] shadow-xs">
                         {item.category || 'General'}
                       </span>
 
                       {/* Trending Overlay Badge */}
                       {item.isTrending && (
-                        <span className="px-2.5 py-1 rounded-full bg-amber-500 text-slate-950 font-black text-[11px] shadow-md flex items-center gap-1 animate-pulse">
-                          <Flame className="w-3 h-3 fill-slate-950" /> 🔥 Trending
+                        <span className="px-2.5 py-1 rounded-full bg-amber-500 text-slate-950 font-black text-[11px] shadow-md flex items-center gap-1">
+                          <Flame className="w-3 h-3 fill-slate-950" /> Trending
+                        </span>
+                      )}
+
+                      {/* Buy 1 Get 1 Free Overlay Badge */}
+                      {item.isBogo && (
+                        <span className="px-2.5 py-1 rounded-full bg-indigo-600 text-white font-black text-[11px] shadow-md flex items-center gap-1">
+                          <Gift className="w-3 h-3 text-white" /> Buy 1 Get 1
                         </span>
                       )}
                     </div>
@@ -294,7 +303,7 @@ export default function ItemsView() {
                         </div>
                       </div>
 
-                      {/* Actions: Stock Toggle, Trending Toggle, Eye Visibility Toggle, Edit, Delete */}
+                      {/* Actions: Stock Toggle, Trending Toggle, BOGO Toggle, Eye Visibility Toggle, Edit, Delete */}
                       <div className="flex items-center gap-1.5">
                         {/* Quick Trending Toggle Button */}
                         <button
@@ -304,9 +313,22 @@ export default function ItemsView() {
                               ? 'bg-amber-400 text-slate-950 border-amber-400 font-extrabold shadow-xs'
                               : 'bg-slate-50 hover:bg-amber-50 text-slate-400 hover:text-amber-600 border-slate-200'
                           }`}
-                          title={item.isTrending ? 'Click to Remove Trending Label' : 'Click to Mark as 🔥 Trending Product'}
+                          title={item.isTrending ? 'Click to Remove Trending Label' : 'Click to Mark as Trending Product'}
                         >
                           <Flame className={`w-4 h-4 ${item.isTrending ? 'fill-slate-950' : ''}`} />
+                        </button>
+
+                        {/* Quick BOGO Toggle Button */}
+                        <button
+                          onClick={() => toggleItemBogo(item.id, !!item.isBogo)}
+                          className={`p-2 rounded-xl transition-all border cursor-pointer ${
+                            item.isBogo
+                              ? 'bg-indigo-600 text-white border-indigo-600 font-extrabold shadow-xs'
+                              : 'bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 border-slate-200'
+                          }`}
+                          title={item.isBogo ? 'Click to Remove Buy 1 Get 1 Offer' : 'Click to Mark as Buy 1 Get 1 Free Offer'}
+                        >
+                          <Gift className="w-4 h-4" />
                         </button>
 
                         {/* Quick Stock Toggle Button */}
@@ -361,18 +383,18 @@ export default function ItemsView() {
         )}
       </main>
 
-      {/* ADD CATEGORY MODAL */}
+      {/* MANAGE CATEGORIES MODAL */}
       {isAddCategoryModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white w-full max-w-md rounded-2xl border border-slate-200 shadow-2xl p-6 space-y-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl border border-slate-200 shadow-2xl p-6 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
                   <FolderPlus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800">Add New Category</h3>
-                  <p className="text-xs text-slate-400">Create a new grocery category in Firestore</p>
+                  <h3 className="text-base font-bold text-slate-800">Manage Grocery Categories</h3>
+                  <p className="text-xs text-slate-400">Add new categories or delete existing categories from Firestore</p>
                 </div>
               </div>
               <button onClick={() => setIsAddCategoryModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-600">
@@ -380,47 +402,73 @@ export default function ItemsView() {
               </button>
             </div>
 
-            <form onSubmit={handleAddCategorySubmit} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Category Name *</label>
+            {/* Form to Add New Category */}
+            <form onSubmit={handleAddCategorySubmit} className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <label className="text-xs font-bold text-slate-700 block">Add New Category *</label>
+              <div className="flex gap-2">
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Pasta & Noodles"
+                  placeholder="e.g. Pasta & Noodles, Beverages..."
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                  className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
-                {categoryError && <p className="text-xs text-rose-600 font-medium mt-1">{categoryError}</p>}
-              </div>
-
-              <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase mb-1.5">Existing Categories</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {categories.map((c) => (
-                    <span key={c} className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-medium">
-                      {c}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsAddCategoryModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
-                >
-                  Cancel
-                </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm whitespace-nowrap"
                 >
-                  Save Category
+                  + Add Category
                 </button>
               </div>
+              {categoryError && <p className="text-xs text-rose-600 font-medium">{categoryError}</p>}
             </form>
+
+            {/* List of Existing Categories with Delete Buttons */}
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Existing Categories ({categories.length})
+              </p>
+              <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 border border-slate-100 rounded-xl p-2 bg-slate-50/50">
+                {categories.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-4">No categories created yet.</p>
+                ) : (
+                  categories.map((c) => (
+                    <div
+                      key={c}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 transition-colors"
+                    >
+                      <span className="text-xs font-bold text-slate-800">{c}</span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (window.confirm(`Are you sure you want to delete category "${c}"?`)) {
+                            await deleteCategory(c);
+                            if (selectedCategory === c) {
+                              setSelectedCategory('All');
+                            }
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-bold border border-rose-200 flex items-center gap-1 transition-colors cursor-pointer"
+                        title={`Delete Category "${c}"`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsAddCategoryModalOpen(false)}
+                className="px-5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -514,13 +562,13 @@ export default function ItemsView() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Stock Availability</label>
                   <select
                     value={editFormData.inStock ? 'true' : 'false'}
                     onChange={e => setEditFormData({ ...editFormData, inStock: e.target.value === 'true' })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500 text-xs font-semibold"
                   >
                     <option value="true">In Stock</option>
                     <option value="false">Out of Stock</option>
@@ -528,14 +576,26 @@ export default function ItemsView() {
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Trending Tag 🔥</label>
+                  <label className="font-bold text-slate-700 block mb-1">Trending Tag</label>
                   <select
                     value={editFormData.isTrending ? 'true' : 'false'}
                     onChange={e => setEditFormData({ ...editFormData, isTrending: e.target.value === 'true' })}
-                    className="w-full bg-slate-50 border border-amber-200 rounded-xl px-3 py-2 text-amber-900 font-bold focus:ring-2 focus:ring-amber-400"
+                    className="w-full bg-slate-50 border border-amber-200 rounded-xl px-2.5 py-2 text-amber-900 font-bold focus:ring-2 focus:ring-amber-400 text-xs"
                   >
-                    <option value="false">Normal (No Tag)</option>
-                    <option value="true">🔥 Trending Product</option>
+                    <option value="false">Normal</option>
+                    <option value="true">Trending Product</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Buy 1 Get 1</label>
+                  <select
+                    value={editFormData.isBogo ? 'true' : 'false'}
+                    onChange={e => setEditFormData({ ...editFormData, isBogo: e.target.value === 'true' })}
+                    className="w-full bg-slate-50 border border-indigo-200 rounded-xl px-2.5 py-2 text-indigo-900 font-bold focus:ring-2 focus:ring-indigo-400 text-xs"
+                  >
+                    <option value="false">No Offer</option>
+                    <option value="true">Buy 1 Get 1 Free</option>
                   </select>
                 </div>
               </div>
