@@ -44,6 +44,7 @@ export const AdminProvider = ({ children }) => {
   const [complaints, setComplaints] = useState([]);
   const [users, setUsers] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [coupons, setCoupons] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Helper to purge auto-seeded dummy data & old food categories from Firestore
@@ -146,11 +147,15 @@ export const AdminProvider = ({ children }) => {
     });
 
     // Staff snapshot
-    const unsubStaff = onSnapshot(collection(db, 'staff'), (snap) => {
-      const loadedStaff = snap.docs
+    const unsubStaff = onSnapshot(collection(db, 'staff'), (snapshot) => {
+      const loadedStaff = snapshot.docs
         .map(d => ({ id: d.id, ...d.data() }))
         .filter(s => !['STF-001', 'STF-002', 'STF-003', 'STF-004'].includes(s.id));
       setStaff(loadedStaff);
+    });
+
+    const unsubCoupons = onSnapshot(collection(db, 'coupons'), (snapshot) => {
+      setCoupons(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
     // Orders snapshot with audio ping for new incoming orders
@@ -203,13 +208,14 @@ export const AdminProvider = ({ children }) => {
     });
 
     return () => {
-      unsubItems();
       unsubCat();
+      unsubItems();
       unsubStaff();
       unsubOrders();
-      unsubLogs();
       unsubComplaints();
       unsubUsers();
+      unsubLogs();
+      unsubCoupons();
     };
   }, []);
 
@@ -573,6 +579,42 @@ export const AdminProvider = ({ children }) => {
     }
   };
 
+  const addCoupon = async (couponData) => {
+    try {
+      const docRef = await addDoc(collection(db, 'coupons'), {
+        ...couponData,
+        createdAt: new Date().toISOString()
+      });
+      await addAuditLog('CREATE_COUPON', `Created coupon ${couponData.code}`, 'Admin', 'success');
+      return docRef.id;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  };
+
+  const toggleCouponStatus = async (id, currentStatus) => {
+    try {
+      await updateDoc(doc(db, 'coupons', id), { isActive: !currentStatus });
+      await addAuditLog('UPDATE_COUPON', `Toggled coupon status for ID ${id}`, 'Admin', 'info');
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  };
+
+  const deleteCoupon = async (id, code) => {
+    try {
+      await deleteDoc(doc(db, 'coupons', id));
+      await addAuditLog('DELETE_COUPON', `Deleted coupon ${code}`, 'Admin', 'warning');
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  };
+
   return (
     <AdminContext.Provider value={{
       categories,
@@ -607,7 +649,11 @@ export const AdminProvider = ({ children }) => {
       getUserSavedProducts,
       toggleUserBlockStatus,
       updateUserAdminNote,
-      addAuditLog
+      addAuditLog,
+      coupons,
+      addCoupon,
+      toggleCouponStatus,
+      deleteCoupon
     }}>
       {children}
     </AdminContext.Provider>

@@ -10,7 +10,8 @@ import {
   ClipboardList,
   ShieldCheck,
   Package,
-  MessageSquareWarning
+  MessageSquareWarning,
+  Ticket
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 
@@ -85,6 +86,16 @@ export default function Sidebar() {
           path: '/dashboard/users',
           icon: Users,
           badge: undefined
+        }
+      ]
+    },
+    {
+      title: 'MARKETING & CRM',
+      items: [
+        {
+          name: 'Discount Coupons',
+          path: '/dashboard/coupons',
+          icon: Ticket
         }
       ]
     },
