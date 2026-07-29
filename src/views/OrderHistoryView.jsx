@@ -23,6 +23,7 @@ export default function OrderHistoryView() {
   const { orders, staff, cancelReasonsList, updateOrderStatus, cancelOrder, assignDeliveryPartner } = useAdmin();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState('');
 
   // Modal for view/update order
   const [activeModalOrder, setActiveModalOrder] = useState(null);
@@ -40,10 +41,33 @@ export default function OrderHistoryView() {
 
   const filteredOrders = historyOrders.filter(order => {
     const matchesStatus = statusFilter === 'All' || order.status === statusFilter;
-    const matchesSearch = (order.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (order.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (order.deliveryAddress || '').toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
+    
+    // Check text search
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = (order.id || '').toLowerCase().includes(query) ||
+                          (order.customerName || '').toLowerCase().includes(query) ||
+                          (order.customerEmail || '').toLowerCase().includes(query) ||
+                          (order.customerPhone || '').toLowerCase().includes(query) ||
+                          (order.deliveryAddress || '').toLowerCase().includes(query);
+                          
+    // Check date filter
+    let matchesDate = true;
+    if (dateFilter) {
+      const orderDateStr = order.orderTime || order.createdAt || '';
+      const d = new Date(orderDateStr);
+      if (!isNaN(d)) {
+        // Adjust for local time zone formatting
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const formattedOrderDate = `${year}-${month}-${day}`;
+        matchesDate = (formattedOrderDate === dateFilter);
+      } else {
+        matchesDate = false; 
+      }
+    }
+
+    return matchesStatus && matchesSearch && matchesDate;
   });
 
   useEffect(() => {
@@ -78,11 +102,29 @@ export default function OrderHistoryView() {
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search order ID, customer..."
+                placeholder="Search ID, name, email, phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-700 focus:ring-2 focus:ring-emerald-500"
               />
+            </div>
+
+            <div className="relative w-full sm:w-44">
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-xs text-slate-700 focus:ring-2 focus:ring-emerald-500"
+              />
+              {dateFilter && (
+                <button 
+                  onClick={() => setDateFilter('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 bg-slate-50 rounded-full cursor-pointer"
+                  title="Clear Date"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">

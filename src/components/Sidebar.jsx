@@ -78,6 +78,17 @@ export default function Sidebar() {
       ]
     },
     {
+      title: 'CUSTOMER DATA',
+      items: [
+        {
+          name: 'All Users / Customers',
+          path: '/dashboard/users',
+          icon: Users,
+          badge: undefined
+        }
+      ]
+    },
+    {
       title: 'STAFF & LOGISTICS',
       items: [
         {

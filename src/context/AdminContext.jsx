@@ -8,7 +8,8 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  getDocs
+  getDocs,
+  writeBatch
 } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -41,6 +42,7 @@ export const AdminProvider = ({ children }) => {
   const [staff, setStaff] = useState([]);
   const [orders, setOrders] = useState([]);
   const [complaints, setComplaints] = useState([]);
+  const [users, setUsers] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -193,6 +195,13 @@ export const AdminProvider = ({ children }) => {
       setComplaints(loadedComplaints);
     });
 
+    // Users / Customers snapshot
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
+      const loadedUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      loadedUsers.sort((a, b) => getTimeMs(b.createdAt) - getTimeMs(a.createdAt));
+      setUsers(loadedUsers);
+    });
+
     return () => {
       unsubItems();
       unsubCat();
@@ -200,6 +209,7 @@ export const AdminProvider = ({ children }) => {
       unsubOrders();
       unsubLogs();
       unsubComplaints();
+      unsubUsers();
     };
   }, []);
 
@@ -494,6 +504,75 @@ export const AdminProvider = ({ children }) => {
     await addAuditLog('COMPLAINT_DELETED', `Deleted Complaint #${complaintId} from database`, 'Support', 'warning');
   };
 
+  // Fetch user's saved/wishlist products from subcollections or document fields
+  const getUserSavedProducts = async (userId) => {
+    const saved = [];
+    // Try common subcollection names
+    const subcollectionNames = ['savedProducts', 'wishlist', 'favorites', 'cart', 'saved'];
+    for (const subName of subcollectionNames) {
+      try {
+        const subSnap = await getDocs(collection(db, 'users', userId, subName));
+        if (!subSnap.empty) {
+          subSnap.docs.forEach(d => {
+            saved.push({ id: d.id, source: subName, ...d.data() });
+          });
+        }
+      } catch (e) {
+        // Subcollection doesn't exist, skip
+      }
+    }
+    return saved;
+  };
+
+  // Block or unblock a user
+  const toggleUserBlockStatus = async (userId, currentStatus) => {
+    try {
+      await setDoc(doc(db, 'users', userId), {
+        isBlocked: !currentStatus,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      const action = !currentStatus ? 'BLOCKED' : 'UNBLOCKED';
+      await addAuditLog(`USER_${action}`, `${!currentStatus ? 'Blocked' : 'Unblocked'} User #${userId}`, 'Admin', !currentStatus ? 'warning' : 'success');
+    } catch (error) {
+      console.error("Error updating block status: ", error);
+      throw error;
+    }
+  };
+
+  // Update private admin note for a user
+  const updateUserAdminNote = async (userId, note) => {
+    try {
+      await setDoc(doc(db, 'users', userId), {
+        adminNote: note,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (error) {
+      console.error("Error updating admin note: ", error);
+      throw error;
+    }
+  };
+  // Bulk update items using batch write
+  const bulkUpdateItems = async (itemsData) => {
+    // itemsData is array of { id, updates }
+    try {
+      const batch = writeBatch(db);
+      
+      itemsData.forEach(data => {
+        const itemRef = doc(db, 'items', data.id);
+        batch.update(itemRef, {
+          ...data.updates,
+          updatedAt: new Date().toISOString()
+        });
+      });
+
+      await batch.commit();
+      await addAuditLog('BULK_UPDATE_ITEMS', `Bulk updated ${itemsData.length} items`, 'Admin', 'info');
+    } catch (error) {
+      console.error("Error bulk updating items: ", error);
+      throw error;
+    }
+  };
+
   return (
     <AdminContext.Provider value={{
       categories,
@@ -501,6 +580,7 @@ export const AdminProvider = ({ children }) => {
       staff,
       orders,
       complaints,
+      users,
       auditLogs,
       earnings,
       isLoading,
@@ -514,6 +594,7 @@ export const AdminProvider = ({ children }) => {
       toggleItemVisibility,
       toggleItemStock,
       deleteItem,
+      bulkUpdateItems,
       updateOrderStatus,
       cancelOrder,
       recordPrintBill,
@@ -523,6 +604,9 @@ export const AdminProvider = ({ children }) => {
       toggleStaffStatus,
       updateComplaintStatus,
       deleteComplaint,
+      getUserSavedProducts,
+      toggleUserBlockStatus,
+      updateUserAdminNote,
       addAuditLog
     }}>
       {children}
