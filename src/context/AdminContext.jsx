@@ -40,6 +40,7 @@ export const AdminProvider = ({ children }) => {
   const [items, setItems] = useState([]);
   const [staff, setStaff] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [complaints, setComplaints] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -185,12 +186,20 @@ export const AdminProvider = ({ children }) => {
       setAuditLogs(loadedLogs);
     });
 
+    // Complaints snapshot
+    const unsubComplaints = onSnapshot(collection(db, 'complaints'), (snap) => {
+      const loadedComplaints = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      loadedComplaints.sort((a, b) => getTimeMs(b.createdAt) - getTimeMs(a.createdAt));
+      setComplaints(loadedComplaints);
+    });
+
     return () => {
       unsubItems();
       unsubCat();
       unsubStaff();
       unsubOrders();
       unsubLogs();
+      unsubComplaints();
     };
   }, []);
 
@@ -294,6 +303,7 @@ export const AdminProvider = ({ children }) => {
       rating: 5.0,
       inStock: newItem.inStock !== false,
       isVisible: true, // Default visible
+      isTrending: newItem.isTrending || false,
       createdAt: new Date().toISOString()
     };
     await setDoc(doc(db, 'items', itemId), createdItem);
@@ -316,9 +326,22 @@ export const AdminProvider = ({ children }) => {
       category: finalCategory,
       price: salePrice,
       sellingPrice: mrp,
-      offPercentage
+      offPercentage,
+      isTrending: !!updatedFields.isTrending
     });
     await addAuditLog('ITEM_UPDATED', `Updated product "${updatedFields.name || id}" in Firestore database`, 'Catalog', 'warning');
+  };
+
+  const toggleItemTrending = async (id, currentIsTrending) => {
+    const newTrending = !currentIsTrending;
+    await updateDoc(doc(db, 'items', id), { isTrending: newTrending });
+    const target = items.find(i => i.id === id);
+    await addAuditLog(
+      'ITEM_TRENDING_TOGGLED',
+      `Set product "${target?.name || id}" trending status to ${newTrending ? '🔥 Trending' : 'Normal'}`,
+      'Catalog',
+      newTrending ? 'success' : 'info'
+    );
   };
 
   const toggleItemVisibility = async (id, currentVisibility) => {
@@ -443,12 +466,27 @@ export const AdminProvider = ({ children }) => {
     await addAuditLog('STAFF_STATUS_CHANGE', `Changed ${target?.name} status to ${newStatus}`, 'Staff', 'info');
   };
 
+  // Actions for Complaints
+  const updateComplaintStatus = async (complaintId, newStatus) => {
+    await updateDoc(doc(db, 'complaints', complaintId), {
+      status: newStatus,
+      updatedAt: new Date().toISOString()
+    });
+    await addAuditLog('COMPLAINT_STATUS_UPDATE', `Updated status of Complaint #${complaintId} to "${newStatus}"`, 'Support', 'info');
+  };
+
+  const deleteComplaint = async (complaintId) => {
+    await deleteDoc(doc(db, 'complaints', complaintId));
+    await addAuditLog('COMPLAINT_DELETED', `Deleted Complaint #${complaintId} from database`, 'Support', 'warning');
+  };
+
   return (
     <AdminContext.Provider value={{
       categories,
       items,
       staff,
       orders,
+      complaints,
       auditLogs,
       earnings,
       isLoading,
@@ -457,6 +495,7 @@ export const AdminProvider = ({ children }) => {
       deleteCategory,
       addItem,
       editItem,
+      toggleItemTrending,
       toggleItemVisibility,
       toggleItemStock,
       deleteItem,
@@ -467,6 +506,8 @@ export const AdminProvider = ({ children }) => {
       addStaff,
       removeStaff,
       toggleStaffStatus,
+      updateComplaintStatus,
+      deleteComplaint,
       addAuditLog
     }}>
       {children}

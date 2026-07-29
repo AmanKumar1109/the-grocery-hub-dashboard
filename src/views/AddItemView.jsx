@@ -14,6 +14,7 @@ export default function AddItemView() {
     price: '',
     sellingPrice: '',
     inStock: true,
+    isTrending: false,
     image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&auto=format&fit=crop&q=80'
   });
 
@@ -188,6 +189,21 @@ export default function AddItemView() {
                 >
                   <option value="true">In Stock (Available)</option>
                   <option value="false">Out of Stock (Unavailable)</option>
+                </select>
+              </div>
+
+              {/* Trending Product Toggle Selector */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-2 flex items-center gap-1">
+                  Trending Status 🔥
+                </label>
+                <select
+                  value={formData.isTrending ? 'true' : 'false'}
+                  onChange={e => setFormData({ ...formData, isTrending: e.target.value === 'true' })}
+                  className="w-full bg-slate-50 border border-amber-200 rounded-xl px-4 py-2.5 text-xs font-bold text-amber-900 focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                >
+                  <option value="false">Normal Product (Standard)</option>
+                  <option value="true">🔥 Mark as Trending Product</option>
                 </select>
               </div>
 

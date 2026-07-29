@@ -13,7 +13,8 @@ import {
   Filter,
   Star,
   FolderPlus,
-  Tag
+  Tag,
+  Flame
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
@@ -21,7 +22,7 @@ import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 
 export default function ItemsView() {
-  const { items, categories, addCategory, editItem, toggleItemVisibility, toggleItemStock, deleteItem } = useAdmin();
+  const { items, categories, addCategory, editItem, toggleItemTrending, toggleItemVisibility, toggleItemStock, deleteItem } = useAdmin();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -41,6 +42,7 @@ export default function ItemsView() {
     price: '',
     sellingPrice: '',
     inStock: true,
+    isTrending: false,
     image: ''
   });
 
@@ -56,10 +58,15 @@ export default function ItemsView() {
     }
   }, [selectedCategory, searchQuery, items.length]);
 
-  const allCategoryTabs = ['All', ...categories];
+  const allCategoryTabs = ['All', '🔥 Trending', ...categories];
 
   const filteredItems = items.filter(item => {
-    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+    const matchesCategory =
+      selectedCategory === 'All'
+        ? true
+        : selectedCategory === '🔥 Trending'
+        ? !!item.isTrending
+        : item.category === selectedCategory;
     const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
@@ -88,6 +95,7 @@ export default function ItemsView() {
       price: item.price,
       sellingPrice: item.sellingPrice || '',
       inStock: item.inStock,
+      isTrending: !!item.isTrending,
       image: item.image
     });
   };
@@ -224,6 +232,13 @@ export default function ItemsView() {
                       <span className="px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-slate-800 font-bold text-[11px] shadow-xs">
                         {item.category || 'General'}
                       </span>
+
+                      {/* Trending Overlay Badge */}
+                      {item.isTrending && (
+                        <span className="px-2.5 py-1 rounded-full bg-amber-500 text-slate-950 font-black text-[11px] shadow-md flex items-center gap-1 animate-pulse">
+                          <Flame className="w-3 h-3 fill-slate-950" /> 🔥 Trending
+                        </span>
+                      )}
                     </div>
 
                     <div className="absolute top-3 right-3 flex items-center gap-1.5">
@@ -279,8 +294,21 @@ export default function ItemsView() {
                         </div>
                       </div>
 
-                      {/* Actions: Stock Toggle, Eye Visibility Toggle, Edit, Delete */}
+                      {/* Actions: Stock Toggle, Trending Toggle, Eye Visibility Toggle, Edit, Delete */}
                       <div className="flex items-center gap-1.5">
+                        {/* Quick Trending Toggle Button */}
+                        <button
+                          onClick={() => toggleItemTrending(item.id, !!item.isTrending)}
+                          className={`p-2 rounded-xl transition-all border cursor-pointer ${
+                            item.isTrending
+                              ? 'bg-amber-400 text-slate-950 border-amber-400 font-extrabold shadow-xs'
+                              : 'bg-slate-50 hover:bg-amber-50 text-slate-400 hover:text-amber-600 border-slate-200'
+                          }`}
+                          title={item.isTrending ? 'Click to Remove Trending Label' : 'Click to Mark as 🔥 Trending Product'}
+                        >
+                          <Flame className={`w-4 h-4 ${item.isTrending ? 'fill-slate-950' : ''}`} />
+                        </button>
+
                         {/* Quick Stock Toggle Button */}
                         <button
                           onClick={() => toggleItemStock(item.id, item.inStock !== false)}
@@ -486,16 +514,30 @@ export default function ItemsView() {
                 />
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Stock Availability</label>
-                <select
-                  value={editFormData.inStock ? 'true' : 'false'}
-                  onChange={e => setEditFormData({ ...editFormData, inStock: e.target.value === 'true' })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="true">In Stock</option>
-                  <option value="false">Out of Stock</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Stock Availability</label>
+                  <select
+                    value={editFormData.inStock ? 'true' : 'false'}
+                    onChange={e => setEditFormData({ ...editFormData, inStock: e.target.value === 'true' })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="true">In Stock</option>
+                    <option value="false">Out of Stock</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Trending Tag 🔥</label>
+                  <select
+                    value={editFormData.isTrending ? 'true' : 'false'}
+                    onChange={e => setEditFormData({ ...editFormData, isTrending: e.target.value === 'true' })}
+                    className="w-full bg-slate-50 border border-amber-200 rounded-xl px-3 py-2 text-amber-900 font-bold focus:ring-2 focus:ring-amber-400"
+                  >
+                    <option value="false">Normal (No Tag)</option>
+                    <option value="true">🔥 Trending Product</option>
+                  </select>
+                </div>
               </div>
 
               <div className="pt-4 flex justify-end gap-3">

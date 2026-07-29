@@ -9,15 +9,17 @@ import {
   UserPlus,
   ClipboardList,
   ShieldCheck,
-  Package
+  Package,
+  MessageSquareWarning
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 
 export default function Sidebar() {
   const location = useLocation();
-  const { orders, items, staff } = useAdmin();
+  const { orders, items, staff, complaints = [] } = useAdmin();
 
   const currentOrdersCount = orders.filter(o => o.isCurrent).length;
+  const pendingComplaintsCount = complaints.filter(c => c.status === 'pending' || !c.status).length;
 
   const navSections = [
     {
@@ -60,6 +62,18 @@ export default function Sidebar() {
           name: 'Order History',
           path: '/dashboard/orders/history',
           icon: History
+        }
+      ]
+    },
+    {
+      title: 'CUSTOMER SUPPORT',
+      items: [
+        {
+          name: 'Complaints & Help',
+          path: '/dashboard/complaints',
+          icon: MessageSquareWarning,
+          badge: pendingComplaintsCount > 0 ? pendingComplaintsCount : undefined,
+          badgeColor: 'bg-amber-500 text-white font-bold animate-pulse'
         }
       ]
     },

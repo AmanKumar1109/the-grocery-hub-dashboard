@@ -10,7 +10,8 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  IndianRupee
+  IndianRupee,
+  MessageSquareWarning
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import StatCard from '../components/StatCard';
@@ -19,11 +20,12 @@ import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 
 export default function DashboardView() {
-  const { earnings, orders, items, staff } = useAdmin();
+  const { earnings, orders, items, staff, complaints = [] } = useAdmin();
   const containerRef = useRef(null);
 
   const activeOrders = orders.filter(o => o.isCurrent);
   const deliveredToday = orders.filter(o => o.status === 'Delivered');
+  const pendingComplaints = complaints.filter(c => c.status === 'pending' || !c.status);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -175,6 +177,21 @@ export default function DashboardView() {
                 </div>
                 <span className="text-sm font-extrabold text-emerald-700">22.4 mins</span>
               </div>
+
+              <Link to="/dashboard/complaints" className="flex items-center justify-between p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 hover:bg-amber-100/80 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-amber-500 text-white flex items-center justify-center">
+                    <MessageSquareWarning className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-amber-900">Customer Complaints</p>
+                    <p className="text-[11px] text-amber-700">{pendingComplaints.length} pending review</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white">
+                  {complaints.length} Total
+                </span>
+              </Link>
             </div>
 
             <Link
