@@ -412,7 +412,7 @@ export const AdminProvider = ({ children }) => {
       isCurrent
     };
     if (newStatus === 'Cancelled') {
-      updateData.cancelReason = reason || 'Cancelled by Admin';
+      updateData.cancelReason = reason ? `Cancelled by Admin: ${reason}` : 'Cancelled by Admin';
     }
 
     const order = orders.find(o => o.id === orderId);
