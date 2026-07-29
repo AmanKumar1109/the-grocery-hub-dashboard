@@ -415,6 +415,27 @@ export const AdminProvider = ({ children }) => {
       updateData.cancelReason = reason || 'Cancelled by Admin';
     }
 
+    const order = orders.find(o => o.id === orderId);
+    if (order && order.status !== newStatus) {
+      let greeting = null;
+      if (newStatus === 'Order Received' || newStatus === 'Pending') {
+        greeting = "✅ Your order has been confirmed. Thank you for shopping with The Grocery Hub! 💚";
+      } else if (newStatus === 'Packing' || newStatus === 'Preparing') {
+        greeting = "📦 Your order has been packed and is ready for delivery.";
+      } else if (newStatus === 'Out for Delivery') {
+        greeting = "🚚 Your order is on the way. It will arrive soon!";
+      } else if (newStatus === 'Delivered') {
+        greeting = "🎉 Your order has been delivered successfully. Thank you for shopping with The Grocery Hub! 💚";
+      } else if (newStatus === 'Cancelled') {
+        greeting = "❌ Your order has been cancelled. Please contact support if you need any assistance.";
+      }
+
+      if (greeting) {
+        updateData.greetingMessage = greeting;
+        updateData.greetingTimestamp = new Date().toISOString();
+      }
+    }
+
     await updateDoc(doc(db, 'orders', orderId), updateData);
 
     if (newStatus === 'Cancelled') {
@@ -426,6 +447,15 @@ export const AdminProvider = ({ children }) => {
 
   const cancelOrder = async (orderId, reason) => {
     await updateOrderStatus(orderId, 'Cancelled', reason);
+  };
+
+  const sendDelayNotification = async (orderId, message) => {
+    const updateData = {
+      greetingMessage: message,
+      greetingTimestamp: new Date().toISOString()
+    };
+    await updateDoc(doc(db, 'orders', orderId), updateData);
+    await addAuditLog('ORDER_DELAY_NOTIFIED', `Sent delay notification for Order #${orderId}`, 'Orders', 'warning');
   };
 
   const recordPrintBill = async (orderId) => {
@@ -644,6 +674,7 @@ export const AdminProvider = ({ children }) => {
       bulkUpdateItems,
       updateOrderStatus,
       cancelOrder,
+      sendDelayNotification,
       recordPrintBill,
       assignDeliveryPartner,
       addStaff,
