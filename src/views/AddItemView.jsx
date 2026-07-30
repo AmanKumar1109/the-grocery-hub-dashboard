@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { PlusCircle, Package, ArrowLeft, Image as ImageIcon, Check, FolderPlus, X } from 'lucide-react';
+import { PlusCircle, Package, ArrowLeft, Image as ImageIcon, Check, FolderPlus, X, FileSpreadsheet } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
+import ImageUploadInput from '../components/ImageUploadInput';
+import ExcelProductImporter from '../components/ExcelProductImporter';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function AddItemView() {
   const { categories, addCategory, addItem } = useAdmin();
   const navigate = useNavigate();
+
+  const [creationMode, setCreationMode] = useState('single'); // 'single' | 'excel'
 
   const [formData, setFormData] = useState({
     name: '',
@@ -100,8 +104,37 @@ export default function AddItemView() {
           </div>
         )}
 
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Creation Mode Tabs Bar */}
+        <div className="flex items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-xs">
+          <button
+            type="button"
+            onClick={() => setCreationMode('single')}
+            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              creationMode === 'single'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
+            }`}
+          >
+            <PlusCircle className="w-4 h-4" /> Add Single Product
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreationMode('excel')}
+            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              creationMode === 'excel'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
+            }`}
+          >
+            <FileSpreadsheet className="w-4 h-4" /> Bulk Excel Import & Batch Edit Log
+          </button>
+        </div>
+
+        {creationMode === 'excel' ? (
+          <ExcelProductImporter />
+        ) : (
+          <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+            <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Product Name */}
               <div>
@@ -235,16 +268,13 @@ export default function AddItemView() {
                 </select>
               </div>
 
-            {/* Custom Image URL */}
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-2">Image URL *</label>
-              <input
-                type="url"
-                required
-                placeholder="https://images.unsplash.com/..."
+            {/* Product Image Input (Firebase Storage Upload & URL Link) */}
+            <div className="md:col-span-2">
+              <ImageUploadInput
+                label="Product Image"
                 value={formData.image}
-                onChange={e => setFormData({ ...formData, image: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                onChange={(imageUrl) => setFormData(prev => ({ ...prev, image: imageUrl }))}
+                folder="products"
               />
             </div>
           </div>
@@ -269,6 +299,7 @@ export default function AddItemView() {
             </div>
           </form>
         </div>
+        )}
       </main>
 
       {/* QUICK ADD CATEGORY MODAL */}
