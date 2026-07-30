@@ -48,24 +48,86 @@ export default function UsersView() {
   const [savedProducts, setSavedProducts] = useState([]);
   const [savedLoading, setSavedLoading] = useState(false);
 
+  // Helper to extract clean 10-digit phone for cross-matching
+  const getCleanPhone = (p) => {
+    if (!p) return '';
+    const digits = String(p).replace(/\D/g, '');
+    return digits.length >= 10 ? digits.slice(-10) : digits;
+  };
+
+  // Helper to check if a name is a generic placeholder
+  const isGenericName = (n) => {
+    if (!n || typeof n !== 'string') return true;
+    const lower = n.trim().toLowerCase();
+    return (
+      !lower ||
+      lower === 'unknown' ||
+      lower === 'grocery member' ||
+      lower === 'valued customer' ||
+      lower === 'customer' ||
+      lower === 'user' ||
+      lower === 'member' ||
+      lower === 'n/a' ||
+      lower === 'null' ||
+      lower === 'undefined'
+    );
+  };
+
   // Build enriched user profiles by merging Firestore users + orders data
   const enrichedUsers = useMemo(() => {
-    // Build a map of users from the 'users' collection
-    const userMap = new Map();
+    const userList = [];
+    const phoneMap = new Map();
+    const emailMap = new Map();
+    const idMap = new Map();
 
+    const extractName = (obj) => {
+      if (!obj) return '';
+      const candidate = (
+        obj.fullName ||
+        obj.name ||
+        obj.displayName ||
+        obj.customerName ||
+        obj.userName ||
+        obj.username ||
+        obj.user_name ||
+        (obj.firstName ? `${obj.firstName} ${obj.lastName || ''}`.trim() : '') ||
+        (obj.first_name ? `${obj.first_name} ${obj.last_name || ''}`.trim() : '') ||
+        obj.profile?.fullName ||
+        obj.profile?.name ||
+        obj.profile?.displayName ||
+        obj.userData?.fullName ||
+        obj.userData?.name ||
+        obj.userInfo?.fullName ||
+        obj.userInfo?.name ||
+        (typeof obj.address === 'object' ? (obj.address.fullName || obj.address.name) : '') ||
+        (Array.isArray(obj.addresses) && obj.addresses[0] ? (obj.addresses[0].fullName || obj.addresses[0].name) : '') ||
+        (typeof obj.deliveryAddress === 'object' ? (obj.deliveryAddress.fullName || obj.deliveryAddress.name) : '') ||
+        (typeof obj.deliveryAddressObject === 'object' ? (obj.deliveryAddressObject.fullName || obj.deliveryAddressObject.name) : '') ||
+        (typeof obj.shippingAddress === 'object' ? (obj.shippingAddress.fullName || obj.shippingAddress.name) : '') ||
+        ''
+      );
+      const str = typeof candidate === 'string' ? candidate.trim() : '';
+      return isGenericName(str) ? '' : str;
+    };
+
+    // 1. Process registered users from Firestore
     users.forEach(u => {
-      const key = (u.phone || u.email || u.id).toLowerCase();
-      userMap.set(key, {
+      const cleanPhone = getCleanPhone(u.phone || u.phoneNumber || u.mobile || u.phoneNum);
+      const emailKey = (u.email || u.emailAddress || '').toLowerCase();
+      const idKey = (u.id || u.uid || '').toLowerCase();
+
+      const rawName = extractName(u);
+
+      const userObj = {
         id: u.id,
-        name: u.name || u.displayName || 'Unknown',
+        name: rawName,
         email: u.email || '',
         phone: u.phone || u.phoneNumber || '',
-        address: u.address || u.defaultAddress || '',
+        address: u.address || u.defaultAddress || (Array.isArray(u.addresses) && u.addresses[0] ? u.addresses[0] : ''),
         createdAt: u.createdAt || u.registeredAt || u.joinedDate || '',
         profileImage: u.profileImage || u.photoURL || '',
         isBlocked: u.isBlocked || false,
         adminNote: u.adminNote || '',
-        // Will be enriched from orders
         totalOrders: 0,
         totalSpent: 0,
         totalSavings: 0,
@@ -73,27 +135,48 @@ export default function UsersView() {
         lastOrderStatus: '',
         ordersList: [],
         isFromFirestore: true,
-        // Saved products from user document fields
         savedFromDoc: u.savedProducts || u.wishlist || u.favorites || u.savedItems || []
-      });
+      };
+
+      userList.push(userObj);
+      if (cleanPhone) phoneMap.set(cleanPhone, userObj);
+      if (emailKey) emailMap.set(emailKey, userObj);
+      if (idKey) idMap.set(idKey, userObj);
     });
 
-    // Enrich from orders — also discover users who aren't in the users collection
+    const findUser = (phone, email, uid) => {
+      const cleanId = (uid || '').toLowerCase();
+      if (cleanId && idMap.has(cleanId)) return idMap.get(cleanId);
+      const cleanP = getCleanPhone(phone);
+      if (cleanP && phoneMap.has(cleanP)) return phoneMap.get(cleanP);
+      const cleanE = (email || '').toLowerCase();
+      if (cleanE && emailMap.has(cleanE)) return emailMap.get(cleanE);
+      return null;
+    };
+
+    // 2. Enrich from orders & discover customers not in users collection
     orders.forEach(order => {
-      const phone = (order.customerPhone || '').toLowerCase();
-      const name = order.customerName || 'Unknown';
-      const key = phone || name.toLowerCase();
+      const phone = order.customerPhone || order.phone || '';
+      const email = order.customerEmail || order.email || '';
+      const uid = order.userId || order.customerId || order.uid || '';
+      
+      const rawOrderName = order.customerName || order.name || order.deliveryAddressObject?.name || order.shippingAddress?.fullName || (typeof order.address === 'object' ? order.address.name : '');
+      const orderName = isGenericName(rawOrderName) ? '' : rawOrderName.trim();
 
-      if (!key || key === 'unknown') return;
+      let userObj = findUser(phone, email, uid);
 
-      let user = userMap.get(key);
-      if (!user) {
-        // User found from orders but not in users collection
-        user = {
-          id: `ord-${key}`,
-          name: name,
-          email: order.customerEmail || '',
-          phone: order.customerPhone || '',
+      if (!userObj) {
+        const cleanP = getCleanPhone(phone);
+        const cleanE = (email || '').toLowerCase();
+        const fallbackKey = cleanP || cleanE || uid || order.id;
+
+        if (!fallbackKey) return;
+
+        userObj = {
+          id: uid || `ord-${fallbackKey}`,
+          name: orderName,
+          email: email,
+          phone: phone,
           address: typeof order.address === 'string' ? order.address :
                    (typeof order.deliveryAddress === 'string' ? order.deliveryAddress :
                    (order.deliveryAddress ? [order.deliveryAddress.street, order.deliveryAddress.city].filter(Boolean).join(', ') : '')),
@@ -109,12 +192,21 @@ export default function UsersView() {
           isBlocked: false,
           savedFromDoc: []
         };
-        userMap.set(key, user);
+
+        userList.push(userObj);
+        if (cleanP) phoneMap.set(cleanP, userObj);
+        if (cleanE) emailMap.set(cleanE, userObj);
+        if (uid) idMap.set(uid.toLowerCase(), userObj);
       }
 
-      user.totalOrders += 1;
+      // If userObj exists but currently has a generic/empty name, backfill with real name from order
+      if (isGenericName(userObj.name) && orderName) {
+        userObj.name = orderName;
+      }
+
+      userObj.totalOrders += 1;
       const amt = parseFloat(order.totalAmount) || 0;
-      user.totalSpent += amt;
+      userObj.totalSpent += amt;
 
       // Calculate savings from items
       if (order.items && Array.isArray(order.items)) {
@@ -123,24 +215,34 @@ export default function UsersView() {
           const mrp = parseFloat(item.sellingPrice || item.mrp) || 0;
           const salePrice = parseFloat(item.price) || 0;
           if (mrp > salePrice && salePrice > 0) {
-            user.totalSavings += (mrp - salePrice) * qty;
+            userObj.totalSavings += (mrp - salePrice) * qty;
           }
         });
       }
 
       const orderDate = order.orderTime || order.createdAt || '';
-      if (!user.lastOrderDate || orderDate > user.lastOrderDate) {
-        user.lastOrderDate = orderDate;
-        user.lastOrderStatus = order.status || '';
+      if (!userObj.lastOrderDate || orderDate > userObj.lastOrderDate) {
+        userObj.lastOrderDate = orderDate;
+        userObj.lastOrderStatus = order.status || '';
       }
 
-      user.ordersList.push(order);
+      userObj.ordersList.push(order);
     });
 
+    // 3. Fallback name resolution & smart tags
     const now = new Date();
-    // Calculate smart tags
-    const usersArray = Array.from(userMap.values());
-    usersArray.forEach(user => {
+    userList.forEach(user => {
+      if (isGenericName(user.name)) {
+        if (user.email) {
+          const prefix = user.email.split('@')[0];
+          user.name = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+        } else if (user.phone) {
+          user.name = `Customer (${user.phone})`;
+        } else {
+          user.name = 'Customer';
+        }
+      }
+
       const tags = [];
       const lastOrder = user.lastOrderDate ? new Date(user.lastOrderDate) : null;
       const joined = user.createdAt ? new Date(user.createdAt) : null;
@@ -148,7 +250,6 @@ export default function UsersView() {
       const daysSinceLastOrder = lastOrder ? (now - lastOrder) / (1000 * 60 * 60 * 24) : Infinity;
       const daysSinceJoined = joined ? (now - joined) / (1000 * 60 * 60 * 24) : Infinity;
 
-      // Logic for smart tags
       if (user.totalSpent >= 5000 || user.totalOrders >= 15) {
         tags.push({ label: 'VIP', color: 'bg-amber-100 text-amber-700 border-amber-200' });
       } else if (user.totalOrders >= 5) {
@@ -170,7 +271,7 @@ export default function UsersView() {
       user.smartTags = tags;
     });
 
-    return usersArray;
+    return userList;
   }, [users, orders]);
 
   // Filtered and sorted users
