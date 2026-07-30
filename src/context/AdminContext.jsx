@@ -8,7 +8,8 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  getDocs
+  getDocs,
+  writeBatch
 } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -41,7 +42,9 @@ export const AdminProvider = ({ children }) => {
   const [staff, setStaff] = useState([]);
   const [orders, setOrders] = useState([]);
   const [complaints, setComplaints] = useState([]);
+  const [users, setUsers] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [coupons, setCoupons] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Helper to purge auto-seeded dummy data & old food categories from Firestore
@@ -144,11 +147,15 @@ export const AdminProvider = ({ children }) => {
     });
 
     // Staff snapshot
-    const unsubStaff = onSnapshot(collection(db, 'staff'), (snap) => {
-      const loadedStaff = snap.docs
+    const unsubStaff = onSnapshot(collection(db, 'staff'), (snapshot) => {
+      const loadedStaff = snapshot.docs
         .map(d => ({ id: d.id, ...d.data() }))
         .filter(s => !['STF-001', 'STF-002', 'STF-003', 'STF-004'].includes(s.id));
       setStaff(loadedStaff);
+    });
+
+    const unsubCoupons = onSnapshot(collection(db, 'coupons'), (snapshot) => {
+      setCoupons(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
     // Orders snapshot with audio ping for new incoming orders
@@ -193,13 +200,22 @@ export const AdminProvider = ({ children }) => {
       setComplaints(loadedComplaints);
     });
 
+    // Users / Customers snapshot
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
+      const loadedUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      loadedUsers.sort((a, b) => getTimeMs(b.createdAt) - getTimeMs(a.createdAt));
+      setUsers(loadedUsers);
+    });
+
     return () => {
-      unsubItems();
       unsubCat();
+      unsubItems();
       unsubStaff();
       unsubOrders();
-      unsubLogs();
       unsubComplaints();
+      unsubUsers();
+      unsubLogs();
+      unsubCoupons();
     };
   }, []);
 
@@ -305,6 +321,7 @@ export const AdminProvider = ({ children }) => {
       isVisible: true, // Default visible
       isTrending: newItem.isTrending || false,
       isBogo: newItem.isBogo || false,
+      recentBuyers: newItem.recentBuyers ? parseInt(newItem.recentBuyers) || 0 : 0,
       createdAt: new Date().toISOString()
     };
     await setDoc(doc(db, 'items', itemId), createdItem);
@@ -329,7 +346,8 @@ export const AdminProvider = ({ children }) => {
       sellingPrice: mrp,
       offPercentage,
       isTrending: !!updatedFields.isTrending,
-      isBogo: !!updatedFields.isBogo
+      isBogo: !!updatedFields.isBogo,
+      recentBuyers: updatedFields.recentBuyers ? parseInt(updatedFields.recentBuyers) || 0 : 0
     });
     await addAuditLog('ITEM_UPDATED', `Updated product "${updatedFields.name || id}" in Firestore database`, 'Catalog', 'warning');
   };
@@ -396,7 +414,28 @@ export const AdminProvider = ({ children }) => {
       isCurrent
     };
     if (newStatus === 'Cancelled') {
-      updateData.cancelReason = reason || 'Cancelled by Admin';
+      updateData.cancelReason = reason ? `Cancelled by Admin: ${reason}` : 'Cancelled by Admin';
+    }
+
+    const order = orders.find(o => o.id === orderId);
+    if (order && order.status !== newStatus) {
+      let greeting = null;
+      if (newStatus === 'Order Received' || newStatus === 'Pending') {
+        greeting = "✅ Your order has been confirmed. Thank you for shopping with The Grocery Hub! 💚";
+      } else if (newStatus === 'Packing' || newStatus === 'Preparing') {
+        greeting = "📦 Your order has been packed and is ready for delivery.";
+      } else if (newStatus === 'Out for Delivery') {
+        greeting = "🚚 Your order is on the way. It will arrive soon!";
+      } else if (newStatus === 'Delivered') {
+        greeting = "🎉 Your order has been delivered successfully. Thank you for shopping with The Grocery Hub! 💚";
+      } else if (newStatus === 'Cancelled') {
+        greeting = "❌ Your order has been cancelled. Please contact support if you need any assistance.";
+      }
+
+      if (greeting) {
+        updateData.greetingMessage = greeting;
+        updateData.greetingTimestamp = new Date().toISOString();
+      }
     }
 
     await updateDoc(doc(db, 'orders', orderId), updateData);
@@ -410,6 +449,15 @@ export const AdminProvider = ({ children }) => {
 
   const cancelOrder = async (orderId, reason) => {
     await updateOrderStatus(orderId, 'Cancelled', reason);
+  };
+
+  const sendDelayNotification = async (orderId, message) => {
+    const updateData = {
+      greetingMessage: message,
+      greetingTimestamp: new Date().toISOString()
+    };
+    await updateDoc(doc(db, 'orders', orderId), updateData);
+    await addAuditLog('ORDER_DELAY_NOTIFIED', `Sent delay notification for Order #${orderId}`, 'Orders', 'warning');
   };
 
   const recordPrintBill = async (orderId) => {
@@ -481,17 +529,127 @@ export const AdminProvider = ({ children }) => {
   };
 
   // Actions for Complaints
-  const updateComplaintStatus = async (complaintId, newStatus) => {
-    await updateDoc(doc(db, 'complaints', complaintId), {
+  const updateComplaintStatus = async (complaintId, newStatus, adminReply = null) => {
+    const updateData = {
       status: newStatus,
       updatedAt: new Date().toISOString()
-    });
+    };
+    if (adminReply !== null) {
+      updateData.adminReply = adminReply;
+    }
+    
+    await updateDoc(doc(db, 'complaints', complaintId), updateData);
     await addAuditLog('COMPLAINT_STATUS_UPDATE', `Updated status of Complaint #${complaintId} to "${newStatus}"`, 'Support', 'info');
   };
 
   const deleteComplaint = async (complaintId) => {
     await deleteDoc(doc(db, 'complaints', complaintId));
     await addAuditLog('COMPLAINT_DELETED', `Deleted Complaint #${complaintId} from database`, 'Support', 'warning');
+  };
+
+  // Fetch user's saved/wishlist products from subcollections or document fields
+  const getUserSavedProducts = async (userId) => {
+    const saved = [];
+    // Try common subcollection names
+    const subcollectionNames = ['savedProducts', 'wishlist', 'favorites', 'cart', 'saved'];
+    for (const subName of subcollectionNames) {
+      try {
+        const subSnap = await getDocs(collection(db, 'users', userId, subName));
+        if (!subSnap.empty) {
+          subSnap.docs.forEach(d => {
+            saved.push({ id: d.id, source: subName, ...d.data() });
+          });
+        }
+      } catch (e) {
+        // Subcollection doesn't exist, skip
+      }
+    }
+    return saved;
+  };
+
+  // Block or unblock a user
+  const toggleUserBlockStatus = async (userId, currentStatus) => {
+    try {
+      await setDoc(doc(db, 'users', userId), {
+        isBlocked: !currentStatus,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      const action = !currentStatus ? 'BLOCKED' : 'UNBLOCKED';
+      await addAuditLog(`USER_${action}`, `${!currentStatus ? 'Blocked' : 'Unblocked'} User #${userId}`, 'Admin', !currentStatus ? 'warning' : 'success');
+    } catch (error) {
+      console.error("Error updating block status: ", error);
+      throw error;
+    }
+  };
+
+  // Update private admin note for a user
+  const updateUserAdminNote = async (userId, note) => {
+    try {
+      await setDoc(doc(db, 'users', userId), {
+        adminNote: note,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (error) {
+      console.error("Error updating admin note: ", error);
+      throw error;
+    }
+  };
+  // Bulk update items using batch write
+  const bulkUpdateItems = async (itemsData) => {
+    // itemsData is array of { id, updates }
+    try {
+      const batch = writeBatch(db);
+      
+      itemsData.forEach(data => {
+        const itemRef = doc(db, 'items', data.id);
+        batch.update(itemRef, {
+          ...data.updates,
+          updatedAt: new Date().toISOString()
+        });
+      });
+
+      await batch.commit();
+      await addAuditLog('BULK_UPDATE_ITEMS', `Bulk updated ${itemsData.length} items`, 'Admin', 'info');
+    } catch (error) {
+      console.error("Error bulk updating items: ", error);
+      throw error;
+    }
+  };
+
+  const addCoupon = async (couponData) => {
+    try {
+      const docRef = await addDoc(collection(db, 'coupons'), {
+        ...couponData,
+        createdAt: new Date().toISOString()
+      });
+      await addAuditLog('CREATE_COUPON', `Created coupon ${couponData.code}`, 'Admin', 'success');
+      return docRef.id;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  };
+
+  const toggleCouponStatus = async (id, currentStatus) => {
+    try {
+      await updateDoc(doc(db, 'coupons', id), { isActive: !currentStatus });
+      await addAuditLog('UPDATE_COUPON', `Toggled coupon status for ID ${id}`, 'Admin', 'info');
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  };
+
+  const deleteCoupon = async (id, code) => {
+    try {
+      await deleteDoc(doc(db, 'coupons', id));
+      await addAuditLog('DELETE_COUPON', `Deleted coupon ${code}`, 'Admin', 'warning');
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
   };
 
   return (
@@ -501,6 +659,7 @@ export const AdminProvider = ({ children }) => {
       staff,
       orders,
       complaints,
+      users,
       auditLogs,
       earnings,
       isLoading,
@@ -514,8 +673,10 @@ export const AdminProvider = ({ children }) => {
       toggleItemVisibility,
       toggleItemStock,
       deleteItem,
+      bulkUpdateItems,
       updateOrderStatus,
       cancelOrder,
+      sendDelayNotification,
       recordPrintBill,
       assignDeliveryPartner,
       addStaff,
@@ -523,7 +684,14 @@ export const AdminProvider = ({ children }) => {
       toggleStaffStatus,
       updateComplaintStatus,
       deleteComplaint,
-      addAuditLog
+      getUserSavedProducts,
+      toggleUserBlockStatus,
+      updateUserAdminNote,
+      addAuditLog,
+      coupons,
+      addCoupon,
+      toggleCouponStatus,
+      deleteCoupon
     }}>
       {children}
     </AdminContext.Provider>

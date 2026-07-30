@@ -19,6 +19,8 @@ import StaffView from './views/StaffView';
 import AddStaffView from './views/AddStaffView';
 import AuditLogsView from './views/AuditLogsView';
 import ComplaintsView from './views/ComplaintsView';
+import UsersView from './views/UsersView';
+import CouponsView from './views/CouponsView';
 import RiderDashboard from './views/RiderDashboard';
 
 // Admin layout — sidebar + content
@@ -35,6 +37,8 @@ function AdminLayout() {
             <Route path="orders/current" element={<CurrentOrdersView />} />
             <Route path="orders/history" element={<OrderHistoryView />} />
             <Route path="complaints" element={<ComplaintsView />} />
+            <Route path="users" element={<UsersView />} />
+            <Route path="coupons" element={<CouponsView />} />
             <Route path="staff" element={<StaffView />} />
             <Route path="staff/add" element={<AddStaffView />} />
             <Route path="audit-logs" element={<AuditLogsView />} />

@@ -10,7 +10,8 @@ import {
   ClipboardList,
   ShieldCheck,
   Package,
-  MessageSquareWarning
+  MessageSquareWarning,
+  Ticket
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 
@@ -74,6 +75,27 @@ export default function Sidebar() {
           icon: MessageSquareWarning,
           badge: pendingComplaintsCount > 0 ? pendingComplaintsCount : undefined,
           badgeColor: 'bg-amber-500 text-white font-bold animate-pulse'
+        }
+      ]
+    },
+    {
+      title: 'CUSTOMER DATA',
+      items: [
+        {
+          name: 'All Users / Customers',
+          path: '/dashboard/users',
+          icon: Users,
+          badge: undefined
+        }
+      ]
+    },
+    {
+      title: 'MARKETING & CRM',
+      items: [
+        {
+          name: 'Discount Coupons',
+          path: '/dashboard/coupons',
+          icon: Ticket
         }
       ]
     },
