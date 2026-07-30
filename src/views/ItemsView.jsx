@@ -310,9 +310,16 @@ export default function ItemsView() {
                         <h3 className="font-bold text-slate-800 text-base group-hover:text-emerald-700 transition-colors">
                           {item.name}
                         </h3>
-                        <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100 text-amber-700 font-bold text-xs">
-                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                          {item.rating || 5.0}
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100 text-amber-700 font-bold text-xs">
+                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                            {item.rating || 5.0}
+                          </div>
+                          {item.recentBuyers > 0 && (
+                            <div className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 font-bold whitespace-nowrap">
+                              {item.recentBuyers} Buyers
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

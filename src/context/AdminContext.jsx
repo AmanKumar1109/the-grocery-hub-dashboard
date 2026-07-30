@@ -321,6 +321,7 @@ export const AdminProvider = ({ children }) => {
       isVisible: true, // Default visible
       isTrending: newItem.isTrending || false,
       isBogo: newItem.isBogo || false,
+      recentBuyers: newItem.recentBuyers ? parseInt(newItem.recentBuyers) || 0 : 0,
       createdAt: new Date().toISOString()
     };
     await setDoc(doc(db, 'items', itemId), createdItem);
@@ -345,7 +346,8 @@ export const AdminProvider = ({ children }) => {
       sellingPrice: mrp,
       offPercentage,
       isTrending: !!updatedFields.isTrending,
-      isBogo: !!updatedFields.isBogo
+      isBogo: !!updatedFields.isBogo,
+      recentBuyers: updatedFields.recentBuyers ? parseInt(updatedFields.recentBuyers) || 0 : 0
     });
     await addAuditLog('ITEM_UPDATED', `Updated product "${updatedFields.name || id}" in Firestore database`, 'Catalog', 'warning');
   };
