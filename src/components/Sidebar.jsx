@@ -81,7 +81,7 @@ export default function Sidebar() {
       title: 'STAFF & LOGISTICS',
       items: [
         {
-          name: 'Delivery Personnel',
+          name: 'Delivery Persons',
           path: '/dashboard/staff',
           icon: Users,
           badge: staff.length
