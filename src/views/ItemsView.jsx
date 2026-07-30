@@ -51,6 +51,7 @@ export default function ItemsView() {
     category: '',
     price: '',
     sellingPrice: '',
+    recentBuyers: '',
     inStock: true,
     isTrending: false,
     image: ''
@@ -106,6 +107,7 @@ export default function ItemsView() {
       category: item.category,
       price: item.price,
       sellingPrice: item.sellingPrice || '',
+      recentBuyers: item.recentBuyers !== undefined ? item.recentBuyers : '',
       inStock: item.inStock,
       isTrending: !!item.isTrending,
       isBogo: !!item.isBogo,
@@ -549,32 +551,44 @@ export default function ItemsView() {
                 </div>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  Our Price (₹)
-                  {(() => {
-                    const mrp = parseFloat(editFormData.sellingPrice);
-                    const sale = parseFloat(editFormData.price);
-                    if (mrp > 0 && sale > 0 && mrp > sale) {
-                      const pct = Math.round(((mrp - sale) / mrp) * 100);
-                      return (
-                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 font-bold text-[11px]">
-                          {pct}% OFF
-                        </span>
-                      );
-                    }
-                    return null;
-                  })()}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={editFormData.price}
-                  onChange={e => setEditFormData({ ...editFormData, price: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
-                  placeholder="e.g. 45.00"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Our Price (₹)
+                    {(() => {
+                      const mrp = parseFloat(editFormData.sellingPrice);
+                      const sale = parseFloat(editFormData.price);
+                      if (mrp > 0 && sale > 0 && mrp > sale) {
+                        const pct = Math.round(((mrp - sale) / mrp) * 100);
+                        return (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 font-bold text-[11px]">
+                            {pct}% OFF
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={editFormData.price}
+                    onChange={e => setEditFormData({ ...editFormData, price: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                    placeholder="e.g. 45.00"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Recent Buyers (Social Proof)</label>
+                  <input
+                    type="number"
+                    value={editFormData.recentBuyers}
+                    onChange={e => setEditFormData({ ...editFormData, recentBuyers: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                    placeholder="e.g. 59 (Optional)"
+                  />
+                </div>
               </div>
 
               <div>

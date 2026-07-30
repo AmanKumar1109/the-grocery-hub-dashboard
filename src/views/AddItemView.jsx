@@ -13,6 +13,7 @@ export default function AddItemView() {
     category: '',
     price: '',
     sellingPrice: '',
+    recentBuyers: '',
     inStock: true,
     isTrending: false,
     isBogo: false,
@@ -156,28 +157,39 @@ export default function AddItemView() {
                 />
               </div>
 
-              {/* Discounted / Our Price */}
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-2">
-                  Our Price (₹) *
-                  {offPercentage !== null && (
-                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 font-bold text-[11px]">
-                      {offPercentage}% OFF
-                    </span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-2">
+                    Our Price (₹) *
+                    {offPercentage !== null && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 font-bold text-[11px]">
+                        {offPercentage}% OFF
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="e.g. 45.00"
+                    value={formData.price}
+                    onChange={e => setFormData({ ...formData, price: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                  {parseFloat(formData.price) >= parseFloat(formData.sellingPrice) && formData.price && formData.sellingPrice && (
+                    <p className="text-[11px] text-rose-500 font-medium mt-1">⚠ Our price must be less than MRP for a discount.</p>
                   )}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  placeholder="e.g. 45.00 (discounted price)"
-                  value={formData.price}
-                  onChange={e => setFormData({ ...formData, price: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-                {parseFloat(formData.price) >= parseFloat(formData.sellingPrice) && formData.price && formData.sellingPrice && (
-                  <p className="text-[11px] text-rose-500 font-medium mt-1">⚠ Our price must be less than MRP for a discount.</p>
-                )}
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-2">Recent Buyers (People Bought)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 59 (Optional)"
+                    value={formData.recentBuyers}
+                    onChange={e => setFormData({ ...formData, recentBuyers: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
               </div>
 
               {/* Stock Status Availability Selector */}

@@ -4,29 +4,91 @@ import { useAdmin } from '../context/AdminContext';
 
 export default function ThermalReceiptModal({ order, onClose }) {
   const { recordPrintBill } = useAdmin();
-  const [printStatus, setPrintStatus] = useState('ready'); // 'ready', 'sending', 'printed'
+  const [printStatus, setPrintStatus] = useState('ready');
 
   if (!order) return null;
 
-  const subtotal = parseFloat(order.totalAmount) || 0;
-  const tax = subtotal * 0.05; // 5% GST
-  const grandTotal = subtotal + tax;
-
   const handlePrint = () => {
     setPrintStatus('sending');
-
     setTimeout(() => {
       recordPrintBill(order.id);
       setPrintStatus('printed');
-
-      // Trigger browser print window with thermal receipt layout
       window.print();
     }, 600);
   };
 
+  const numberToWords = (num) => {
+    if (num === 0) return 'Zero Only';
+    const a = ['','One ','Two ','Three ','Four ','Five ','Six ','Seven ','Eight ','Nine ','Ten ','Eleven ','Twelve ','Thirteen ','Fourteen ','Fifteen ','Sixteen ','Seventeen ','Eighteen ','Nineteen '];
+    const b = ['', '','Twenty ','Thirty ','Forty ','Fifty ','Sixty ','Seventy ','Eighty ','Ninety '];
+    const n = ('000000000' + Math.floor(num)).slice(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+    if (!n) return '';
+    let str = '';
+    str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + a[n[1][1]]) + 'Crore ' : '';
+    str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + a[n[2][1]]) + 'Lakh ' : '';
+    str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + a[n[3][1]]) + 'Thousand ' : '';
+    str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + a[n[4][1]]) + 'Hundred ' : '';
+    str += (n[5] != 0) ? (a[Number(n[5])] || b[n[5][0]] + a[n[5][1]]) : '';
+    return str.trim() + ' Only';
+  };
+
+  const subtotal = parseFloat(order.subTotal || order.totalAmount || 0);
+  const deliveryFee = parseFloat(order.deliveryFee || 0);
+  const total = subtotal + deliveryFee;
+  
+  let totalQty = 0;
+  let totalMrp = 0;
+  
+  order.items?.forEach(item => {
+    const qty = parseFloat(item.quantity || item.qty || 1);
+    totalQty += qty;
+    const price = parseFloat(item.price || 0);
+    const mrp = parseFloat(item.mrp || price);
+    totalMrp += (mrp * qty);
+  });
+
+  const totalSavings = totalMrp - subtotal;
+  const customerName = order.customerName || 'Cash';
+  const customerPhone = order.customerPhone || '';
+
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in print:bg-white print:p-0 print:static">
-      <div className="bg-white w-full max-w-md rounded-2xl border border-slate-200 shadow-2xl overflow-hidden print:shadow-none print:border-none print:w-full print:max-w-none">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in print:bg-white print:p-0 print:absolute print:inset-0 print:block print:items-start print:justify-start">
+      <style>
+        {`
+          @media print {
+            @page {
+              margin: 0;
+              size: 80mm auto;
+            }
+            html, body {
+              background: white;
+              margin: 0 !important;
+              padding: 0 !important;
+              color: black;
+            }
+            body * {
+              visibility: hidden;
+            }
+            .thermal-print-container, .thermal-print-container * {
+              visibility: visible;
+            }
+            .thermal-print-container {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 80mm !important;
+              max-width: 80mm !important;
+              margin: 0 !important;
+              padding: 4mm !important;
+              box-shadow: none !important;
+              border: none !important;
+              font-family: 'Courier New', Courier, monospace !important;
+            }
+          }
+        `}
+      </style>
+
+      <div className="bg-white w-full max-w-md rounded-2xl border border-slate-200 shadow-2xl overflow-hidden print:shadow-none print:border-none print:w-full print:max-w-none print:m-0 print:p-0">
         
         {/* Modal Top Controls (Hidden when printing) */}
         <div className="p-4 bg-slate-900 text-white flex items-center justify-between print:hidden">
@@ -51,96 +113,105 @@ export default function ThermalReceiptModal({ order, onClose }) {
         )}
 
         {/* 80mm Thermal Receipt Layout Preview */}
-        <div className="p-6 bg-slate-100 flex justify-center print:bg-white print:p-0">
-          <div className="bg-white w-[300px] p-5 shadow-md border border-slate-200 font-mono text-[11px] text-slate-900 space-y-3 leading-tight rounded-sm print:shadow-none print:border-none print:w-full">
+        <div className="p-6 bg-slate-100 flex justify-center print:bg-white print:p-0 print:block">
+          <div className="thermal-print-container w-full max-w-[380px] mx-auto bg-white shadow-xl p-6 font-mono text-[12px] leading-tight text-black print:shadow-none print:w-full print:max-w-full print:p-2">
             
-            {/* Store Header */}
-            <div className="text-center space-y-1">
-              <h2 className="font-extrabold text-sm uppercase tracking-widest">GROCERY HUB SUPERMARKET</h2>
-              <p className="text-[10px]">104 Central Boulevard, City Center</p>
-              <p className="text-[10px]">GSTIN: 27AAAAA0000A1Z5 | Tel: 1800-GROCERY</p>
-              <div className="border-b border-dashed border-slate-400 my-2"></div>
+            {/* Header */}
+            <div className="text-center mb-2">
+              <h1 className="text-xl font-bold uppercase mb-1">The Grocery Hub</h1>
+              <p>DADU COMPLEX, NEAR SHITLA MANDIR</p>
+              <p>BAHARAGORA, JHARKHAND-832101</p>
+              <p>MOB: 6207462800, 6203341481</p>
+              <p>GSTIN: 20AAYFT4502E1ZC</p>
             </div>
-
-            {/* Receipt Meta */}
-            <div className="space-y-0.5">
+            
+            <div className="border-t border-b border-dashed border-black py-1 text-center font-bold mb-2">
+              TAX INVOICE
+            </div>
+            
+            {/* Info */}
+            <div className="mb-2 space-y-1">
               <div className="flex justify-between">
-                <span>RECEIPT NO:</span>
-                <span className="font-bold">{order.id}</span>
+                <span>Inv No: {order.id?.slice(0, 8)}</span>
+                <span>Date: {order.orderTime?.split(',')[0] || new Date().toLocaleDateString('en-GB')}</span>
               </div>
               <div className="flex justify-between">
-                <span>DATE/TIME:</span>
-                <span>{order.orderTime}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>CUSTOMER:</span>
-                <span className="font-bold">{order.customerName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>PHONE:</span>
-                <span>{order.customerPhone}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>DRIVER:</span>
-                <span>{order.assignedPartnerName}</span>
+                <span>Name: {customerName?.slice(0, 15)}</span>
+                <span>Mob: {customerPhone}</span>
               </div>
             </div>
-
-            <div className="border-b border-dashed border-slate-400 my-2"></div>
-
+            
+            <div className="border-t border-black border-dashed mb-2"></div>
+            
             {/* Items Table */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between font-bold text-[10px] uppercase">
-                <span>ITEM</span>
-                <span>QTY x PRICE</span>
-                <span>TOTAL</span>
-              </div>
-              <div className="border-b border-slate-300"></div>
-
-              {order.items && order.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between text-[10px]">
-                  <span className="truncate max-w-[140px]">{item.name}</span>
-                  <span>{item.quantity} x ₹{item.price.toFixed(2)}</span>
-                  <span className="font-bold">₹{(item.quantity * item.price).toFixed(2)}</span>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-black border-dashed">
+                  <th className="py-1 font-normal w-1/2">Item</th>
+                  <th className="py-1 font-normal text-center w-1/6">Qty</th>
+                  <th className="py-1 font-normal text-right w-1/6">Rate</th>
+                  <th className="py-1 font-normal text-right w-1/6">Amt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {order.items?.map((item, idx) => {
+                  const qty = parseFloat(item.quantity || item.qty || 1);
+                  const price = parseFloat(item.price || 0);
+                  const amt = price * qty;
+                  return (
+                    <tr key={idx} className="align-top">
+                      <td className="py-1 pr-1">
+                        {idx + 1}. {item.name} {item.weight ? `(${item.weight})` : ''}
+                      </td>
+                      <td className="py-1 text-center">{qty}</td>
+                      <td className="py-1 text-right">{price.toFixed(2)}</td>
+                      <td className="py-1 text-right">{amt.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            
+            <div className="border-t border-black border-dashed mt-2 py-2">
+              <div className="flex justify-between font-bold">
+                <span>Total Items: {totalQty.toFixed(2)}</span>
+                <div className="flex items-center gap-2">
+                  <span>Total:</span>
+                  <span className="text-right">{subtotal.toFixed(2)}</span>
                 </div>
-              ))}
+              </div>
             </div>
-
-            <div className="border-b border-dashed border-slate-400 my-2"></div>
-
-            {/* Totals in Indian Rupees */}
-            <div className="space-y-1 text-right">
+            
+            {/* Tax & Summary */}
+            <div className="border-t border-black border-dashed py-2 space-y-1">
               <div className="flex justify-between">
-                <span>SUBTOTAL:</span>
-                <span>₹{subtotal.toFixed(2)}</span>
+                <span>Total MRP</span>
+                <span>: {totalMrp.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span>GST TAX (5%):</span>
-                <span>₹{tax.toFixed(2)}</span>
+                <span>Total Savings</span>
+                <span>: {totalSavings.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between font-extrabold text-xs pt-1 border-t border-slate-400">
-                <span>GRAND TOTAL:</span>
-                <span>₹{grandTotal.toFixed(2)}</span>
+              {deliveryFee > 0 && (
+                <div className="flex justify-between">
+                  <span>Delivery Fee</span>
+                  <span>: {deliveryFee.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-[14px] mt-1">
+                <span>NET PAYABLE</span>
+                <span>: Rs. {total.toFixed(2)}</span>
               </div>
             </div>
 
-            <div className="border-b border-dashed border-slate-400 my-2"></div>
-
-            {/* Delivery Address */}
-            <div>
-              <p className="font-bold uppercase text-[9px]">DELIVERY ADDRESS:</p>
-              <p className="text-[10px] break-words">
-                {typeof order.address === 'string' ? order.address : (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : (order.deliveryAddress ? [order.deliveryAddress.street, order.deliveryAddress.city].filter(Boolean).join(', ') : 'Store Pickup'))}
-              </p>
+            <div className="border-t border-black border-dashed mt-2 pt-2 text-center text-[10px]">
+              <p>Rupees {numberToWords(total)}</p>
             </div>
 
-            {/* Barcode Simulation */}
-            <div className="text-center pt-2 space-y-1">
-              <div className="font-mono text-[9px] tracking-widest bg-slate-900 text-white p-1 rounded-xs inline-block">
-                |||| | ||||| |||| || |||| ||||
-              </div>
-              <p className="text-[9px] text-slate-500">THANK YOU FOR YOUR ORDER!</p>
+            <div className="border-t border-black border-dashed mt-2 pt-2 text-center">
+              <p className="font-bold">Thank You, Visit Again!</p>
             </div>
+            
           </div>
         </div>
 
