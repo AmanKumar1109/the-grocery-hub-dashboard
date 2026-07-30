@@ -11,7 +11,8 @@ import {
   ShieldCheck,
   Package,
   MessageSquareWarning,
-  Ticket
+  Ticket,
+  FileText
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 
@@ -96,6 +97,21 @@ export default function Sidebar() {
           name: 'Discount Coupons',
           path: '/dashboard/coupons',
           icon: Ticket
+        }
+      ]
+    },
+    {
+      title: 'CONTENT MANAGEMENT',
+      items: [
+        {
+          name: 'Privacy Policy',
+          path: '/dashboard/privacy-policy',
+          icon: FileText
+        },
+        {
+          name: 'Terms of Service',
+          path: '/dashboard/terms-of-service',
+          icon: FileText
         }
       ]
     },

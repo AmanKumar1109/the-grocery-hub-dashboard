@@ -3,7 +3,9 @@ import { auth, db } from '../firebase';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  signOut
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 
@@ -73,6 +75,13 @@ export const AuthProvider = ({ children }) => {
     return credential;
   };
 
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    const credential = await signInWithPopup(auth, provider);
+    await fetchUserRole(credential.user);
+    return credential;
+  };
+
   const logout = () => {
     setUserRole(null);
     setRiderStaffDoc(null);
@@ -86,6 +95,7 @@ export const AuthProvider = ({ children }) => {
       riderStaffDoc,
       authLoading,
       login,
+      loginWithGoogle,
       logout
     }}>
       {children}

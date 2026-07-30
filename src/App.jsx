@@ -22,6 +22,8 @@ import ComplaintsView from './views/ComplaintsView';
 import UsersView from './views/UsersView';
 import CouponsView from './views/CouponsView';
 import RiderDashboard from './views/RiderDashboard';
+import PrivacyPolicyView from './views/PrivacyPolicyView';
+import TermsOfServiceView from './views/TermsOfServiceView';
 
 // Admin layout — sidebar + content
 function AdminLayout() {
@@ -42,6 +44,8 @@ function AdminLayout() {
             <Route path="staff" element={<StaffView />} />
             <Route path="staff/add" element={<AddStaffView />} />
             <Route path="audit-logs" element={<AuditLogsView />} />
+            <Route path="privacy-policy" element={<PrivacyPolicyView />} />
+            <Route path="terms-of-service" element={<TermsOfServiceView />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>
