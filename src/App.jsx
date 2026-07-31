@@ -24,6 +24,9 @@ import CouponsView from './views/CouponsView';
 import RiderDashboard from './views/RiderDashboard';
 import PrivacyPolicyView from './views/PrivacyPolicyView';
 import TermsOfServiceView from './views/TermsOfServiceView';
+import StoreSettingsView from './views/StoreSettingsView';
+import RefundPolicyView from './views/RefundPolicyView';
+import AboutUsView from './views/AboutUsView';
 
 // Admin layout — sidebar + content
 function AdminLayout() {
@@ -46,6 +49,9 @@ function AdminLayout() {
             <Route path="audit-logs" element={<AuditLogsView />} />
             <Route path="privacy-policy" element={<PrivacyPolicyView />} />
             <Route path="terms-of-service" element={<TermsOfServiceView />} />
+            <Route path="refund-policy" element={<RefundPolicyView />} />
+            <Route path="about-us" element={<AboutUsView />} />
+            <Route path="store-settings" element={<StoreSettingsView />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>

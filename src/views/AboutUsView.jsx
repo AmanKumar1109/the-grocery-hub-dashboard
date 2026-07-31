@@ -12,9 +12,9 @@ import {
 } from 'lucide-react';
 import JoditEditor from 'jodit-react';
 
-const POLICY_DOC_REF = doc(db, 'settings', 'termsOfService');
+const POLICY_DOC_REF = doc(db, 'settings', 'aboutUs');
 
-export default function TermsOfServiceView() {
+export default function AboutUsView() {
   const editorRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,8 +43,8 @@ export default function TermsOfServiceView() {
           setTimeout(() => updateWordCount(loadedContent), 100);
         }
       } catch (err) {
-        console.error('Failed to load Terms of Service:', err);
-        setError('Failed to load Terms of Service content.');
+        console.error('Failed to load About Us:', err);
+        setError('Failed to load About Us content.');
       } finally {
         setLoading(false);
       }
@@ -71,7 +71,7 @@ export default function TermsOfServiceView() {
   // Jodit Editor Config
   const joditConfig = useMemo(() => ({
     readonly: false,
-    placeholder: 'Start writing your Terms of Service here...',
+    placeholder: 'Start writing your About Us page here...',
     height: 600,
     style: {
       fontFamily: 'inherit',
@@ -106,7 +106,7 @@ export default function TermsOfServiceView() {
       setLastUpdated(new Date());
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      console.error('Failed to save Terms of Service:', err);
+      console.error('Failed to save About Us:', err);
       setError('Failed to save. Please try again.');
     } finally {
       setSaving(false);
@@ -118,7 +118,7 @@ export default function TermsOfServiceView() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
-          <p className="text-sm font-semibold text-slate-500">Loading Terms of Service…</p>
+          <p className="text-sm font-semibold text-slate-500">Loading About Us…</p>
         </div>
       </div>
     );
@@ -134,11 +134,11 @@ export default function TermsOfServiceView() {
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-lg font-extrabold text-slate-800 tracking-tight">Terms of Service</h1>
+              <h1 className="text-lg font-extrabold text-slate-800 tracking-tight">About Us</h1>
               <p className="text-xs text-slate-400 font-medium">
                 {lastUpdated
                   ? `Last updated: ${lastUpdated.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                  : 'No policy saved yet'}
+                  : 'No content saved yet'}
               </p>
             </div>
           </div>
@@ -164,7 +164,7 @@ export default function TermsOfServiceView() {
             {/* Preview toggle */}
             <button
               onClick={() => setPreviewMode(!previewMode)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 previewMode
                   ? 'bg-violet-100 text-violet-700 border border-violet-200'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
@@ -178,14 +178,14 @@ export default function TermsOfServiceView() {
             <button
               onClick={handleSave}
               disabled={saving || !hasChanges}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-emerald-200 disabled:shadow-none"
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed cursor-pointer text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-emerald-200 disabled:shadow-none"
             >
               {saving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Save className="w-4 h-4" />
               )}
-              {saving ? 'Saving…' : 'Save Policy'}
+              {saving ? 'Saving…' : 'Save Content'}
             </button>
           </div>
         </div>

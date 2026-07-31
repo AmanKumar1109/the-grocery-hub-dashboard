@@ -13,7 +13,9 @@ import {
   MessageSquareWarning,
   Ticket,
   FileText,
-  LogOut
+  LogOut,
+  Settings,
+  Image
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import { useAuth } from '../context/AuthContext';
@@ -113,6 +115,16 @@ export default function Sidebar() {
       ]
     },
     {
+      title: 'APP CUSTOMIZATION',
+      items: [
+        {
+          name: 'Store Settings',
+          path: '/dashboard/store-settings',
+          icon: Settings
+        }
+      ]
+    },
+    {
       title: 'CONTENT MANAGEMENT',
       items: [
         {
@@ -123,6 +135,16 @@ export default function Sidebar() {
         {
           name: 'Terms of Service',
           path: '/dashboard/terms-of-service',
+          icon: FileText
+        },
+        {
+          name: 'Refund Policy',
+          path: '/dashboard/refund-policy',
+          icon: FileText
+        },
+        {
+          name: 'About Us',
+          path: '/dashboard/about-us',
           icon: FileText
         }
       ]
