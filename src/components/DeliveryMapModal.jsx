@@ -199,9 +199,17 @@ export default function DeliveryMapModal({ order, onClose }) {
       [customerCoords.lat, customerCoords.lng],
       [initialRiderCoords.lat, initialRiderCoords.lng]
     ]);
-    map.fitBounds(bounds, { padding: [50, 50] });
+    map.fitBounds(bounds, { padding: [60, 60] });
+
+    // Invalidate map size after DOM layout to guarantee tiles render fully
+    const timer = setTimeout(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    }, 250);
 
     return () => {
+      clearTimeout(timer);
       if (simIntervalRef.current) clearInterval(simIntervalRef.current);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
@@ -374,8 +382,8 @@ export default function DeliveryMapModal({ order, onClose }) {
         </div>
 
         {/* Leaflet Map Body */}
-        <div className="relative flex-1 min-h-[420px] bg-slate-100">
-          <div ref={mapContainerRef} className="w-full h-full min-h-[420px]" />
+        <div className="relative w-full h-[440px] min-h-[440px] bg-slate-100 overflow-hidden">
+          <div ref={mapContainerRef} style={{ width: '100%', height: '440px', minHeight: '440px', zIndex: 1 }} className="w-full h-full" />
 
           {/* Warning Banner if Customer is Beyond 5 KM */}
           {!serviceCheck.isServiceable && (
