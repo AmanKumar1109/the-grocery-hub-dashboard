@@ -1,9 +1,22 @@
 import React from 'react';
-import { Search, Bell, Sparkles, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Bell, Sparkles, RefreshCw, LogOut } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Header({ title, subtitle }) {
   const { auditLogs } = useAdmin();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-20 shadow-xs">
@@ -40,10 +53,20 @@ export default function Header({ title, subtitle }) {
         {/* Add Quick Action */}
         <button
           onClick={() => window.location.reload()}
-          className="p-2 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+          className="p-2 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
           title="Refresh Data"
         >
           <RefreshCw className="w-4 h-4" />
+        </button>
+
+        {/* Admin Logout Button */}
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-extrabold rounded-xl transition-all shadow-2xs cursor-pointer"
+          title="Logout from Admin Panel"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Logout</span>
         </button>
       </div>
     </header>

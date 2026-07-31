@@ -26,6 +26,9 @@ import {
   AlertCircle,
   Wifi,
   WifiOff,
+  Radio,
+  Locate,
+  Compass,
   X
 } from 'lucide-react';
 import DeliveryMapModal from '../components/DeliveryMapModal';
@@ -100,11 +103,60 @@ export default function RiderDashboard() {
   const [deliveringId, setDeliveringId] = useState(null); // orderId being delivered
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [mapOrder, setMapOrder] = useState(null);
+  
+  // Real-time GPS Location sharing state
+  const [isSharingGps, setIsSharingGps] = useState(true);
+  const [gpsCoords, setGpsCoords] = useState(null);
+  const [gpsError, setGpsError] = useState('');
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
+
+  // Live GPS Geolocation Broadcaster to Firestore
+  useEffect(() => {
+    if (!isSharingGps || !navigator.geolocation) return;
+
+    const watchId = navigator.geolocation.watchPosition(
+      async (pos) => {
+        const lat = Math.round(pos.coords.latitude * 10000) / 10000;
+        const lng = Math.round(pos.coords.longitude * 10000) / 10000;
+        const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
+        const heading = pos.coords.heading || 0;
+        const timestamp = new Date().toISOString();
+
+        setGpsCoords({ lat, lng, speed, heading, timestamp });
+        setGpsError('');
+
+        // Broadcast to Rider Staff Document
+        if (riderStaffDoc?.id) {
+          updateDoc(doc(db, 'staff', riderStaffDoc.id), {
+            location: { lat, lng, speed, heading, updatedAt: timestamp }
+          }).catch(() => {});
+        }
+
+        // Broadcast to all active assigned orders
+        const active = orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled');
+        for (const ord of active) {
+          updateDoc(doc(db, 'orders', ord.id), {
+            riderLocation: { lat, lng, speed, heading, updatedAt: timestamp }
+          }).catch(() => {});
+        }
+      },
+      (err) => {
+        console.warn("GPS Location Error:", err);
+        setGpsError('GPS permission denied or unavailable. Please enable device location.');
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 10000
+      }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [isSharingGps, riderStaffDoc?.id, orders.length]);
 
   // Real-time listen to rider's staff doc for live status
   useEffect(() => {
@@ -296,6 +348,67 @@ export default function RiderDashboard() {
             </div>
           </div>
         </div>
+
+          {/* Live GPS Geolocation Broadcaster Control Card */}
+          <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${
+                  isSharingGps
+                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                    : 'bg-slate-700/50 text-slate-400 border-slate-600/30'
+                }`}>
+                  <Radio className={`w-5 h-5 ${isSharingGps ? 'animate-pulse' : ''}`} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-white flex items-center gap-1.5">
+                    Live GPS Broadcaster
+                    <span className={`w-2 h-2 rounded-full ${isSharingGps ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`} />
+                  </h3>
+                  <p className="text-[10px] text-slate-400">
+                    {isSharingGps ? 'Sharing live phone location with Customer & Admin' : 'GPS Location Sharing Disabled'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle Switch */}
+              <button
+                type="button"
+                onClick={() => setIsSharingGps(!isSharingGps)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                  isSharingGps
+                    ? 'bg-emerald-500 hover:bg-emerald-600 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20'
+                    : 'bg-slate-700 hover:bg-slate-600 text-slate-300 border-slate-600'
+                }`}
+              >
+                {isSharingGps ? 'GPS ACTIVE 🟢' : 'ENABLE GPS 📡'}
+              </button>
+            </div>
+
+            {/* GPS Coordinates HUD */}
+            {isSharingGps && (
+              <div className="bg-slate-900/60 p-3 rounded-2xl border border-white/5 flex items-center justify-between text-xs font-bold text-slate-300">
+                <div className="flex items-center gap-2">
+                  <Locate className="w-4 h-4 text-emerald-400" />
+                  <span>
+                    {gpsCoords ? `${gpsCoords.lat}, ${gpsCoords.lng}` : 'Fetching live location…'}
+                  </span>
+                </div>
+                {gpsCoords?.speed > 0 && (
+                  <span className="text-[11px] text-amber-400 font-extrabold bg-amber-400/10 px-2 py-0.5 rounded-lg border border-amber-400/20">
+                    ⚡ {gpsCoords.speed} km/h
+                  </span>
+                )}
+              </div>
+            )}
+
+            {gpsError && (
+              <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[11px] font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{gpsError}</span>
+              </div>
+            )}
+          </div>
 
         {/* Active Orders Section */}
         <div>

@@ -12,13 +12,25 @@ import {
   Package,
   MessageSquareWarning,
   Ticket,
-  FileText
+  FileText,
+  LogOut
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
   const location = useLocation();
   const { orders, items, staff, complaints = [] } = useAdmin();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      window.location.href = '/login';
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
 
   const currentOrdersCount = orders.filter(o => o.isCurrent).length;
   const pendingComplaintsCount = complaints.filter(c => c.status === 'pending' || !c.status).length;
@@ -219,6 +231,13 @@ export default function Sidebar() {
               <ShieldCheck className="w-3 h-3 text-emerald-600" /> Super Admin
             </p>
           </div>
+          <button
+            onClick={handleLogout}
+            title="Logout"
+            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </aside>

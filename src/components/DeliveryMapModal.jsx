@@ -41,9 +41,30 @@ export default function DeliveryMapModal({ order, onClose }) {
   const simIntervalRef = useRef(null);
 
   const customerCoords = resolveOrderCoordinates(order);
-  const initialRiderCoords = getInitialRiderCoordinates(customerCoords.lat, customerCoords.lng);
+  const initialRiderCoords = order.riderLocation && order.riderLocation.lat
+    ? { lat: order.riderLocation.lat, lng: order.riderLocation.lng }
+    : getInitialRiderCoordinates(customerCoords.lat, customerCoords.lng);
 
   const [currentRiderPos, setCurrentRiderPos] = useState(initialRiderCoords);
+
+  // Sync rider position when order.riderLocation updates in Firestore
+  useEffect(() => {
+    if (order.riderLocation && order.riderLocation.lat && order.riderLocation.lng) {
+      const livePos = { lat: order.riderLocation.lat, lng: order.riderLocation.lng };
+      setCurrentRiderPos(livePos);
+
+      if (riderMarkerRef.current) {
+        riderMarkerRef.current.setLatLng([livePos.lat, livePos.lng]);
+      }
+      if (routePolylineRef.current) {
+        routePolylineRef.current.setLatLngs([
+          [BAHARAGORA_HUB.lat, BAHARAGORA_HUB.lng],
+          [livePos.lat, livePos.lng],
+          [customerCoords.lat, customerCoords.lng]
+        ]);
+      }
+    }
+  }, [order.riderLocation]);
 
   const serviceCheck = checkDeliveryServiceable(customerCoords.lat, customerCoords.lng);
 
