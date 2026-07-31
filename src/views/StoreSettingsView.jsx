@@ -18,6 +18,8 @@ export default function StoreSettingsView() {
     instagramUrl: '',
     facebookUrl: '',
     twitterUrl: '',
+    youtubeUrl: '',
+    linkedinUrl: '',
     minOrderFreeDelivery: 500,
     deliveryTiers: [
       { maxAmount: 199, fee: 15 },
@@ -363,6 +365,34 @@ export default function StoreSettingsView() {
                     onChange={handleChange}
                     className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
                     placeholder="https://twitter.com/..."
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">YouTube URL</label>
+                <div className="relative">
+                  <LinkIcon className="w-4 h-4 text-red-600 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="url"
+                    name="youtubeUrl"
+                    value={settings.youtubeUrl || ''}
+                    onChange={handleChange}
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
+                    placeholder="https://youtube.com/..."
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">LinkedIn URL</label>
+                <div className="relative">
+                  <LinkIcon className="w-4 h-4 text-blue-700 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="url"
+                    name="linkedinUrl"
+                    value={settings.linkedinUrl || ''}
+                    onChange={handleChange}
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
+                    placeholder="https://linkedin.com/in/..."
                   />
                 </div>
               </div>
