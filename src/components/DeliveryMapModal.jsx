@@ -27,6 +27,7 @@ import {
   resolveOrderCoordinates,
   getInitialRiderCoordinates
 } from '../utils/locationUtils';
+import { fetchRoadRoute, routePointsToLatLngs, getPointAlongRoute } from '../utils/routeService';
 
 export default function DeliveryMapModal({ order, onClose }) {
   const mapContainerRef = useRef(null);
@@ -34,18 +35,39 @@ export default function DeliveryMapModal({ order, onClose }) {
   const riderMarkerRef = useRef(null);
   const routePolylineRef = useRef(null);
 
+  // Road route points stored for simulation interpolation
+  const routePointsRef = useRef([]);
+
   // Movement simulation state
   const [isSimulating, setIsSimulating] = useState(false);
   const [simProgress, setSimProgress] = useState(0.4); // 40% along route by default
   const [simSpeed, setSimSpeed] = useState(1);
   const simIntervalRef = useRef(null);
 
-  const customerCoords = resolveOrderCoordinates(order);
-  const initialRiderCoords = order.riderLocation && order.riderLocation.lat
-    ? { lat: order.riderLocation.lat, lng: order.riderLocation.lng }
-    : getInitialRiderCoordinates(customerCoords.lat, customerCoords.lng);
+  const [customerCoords, setCustomerCoords] = useState(null);
+  const [initialRiderCoords, setInitialRiderCoords] = useState(null);
+  const [serviceCheck, setServiceCheck] = useState(null);
 
-  const [currentRiderPos, setCurrentRiderPos] = useState(initialRiderCoords);
+  const [currentRiderPos, setCurrentRiderPos] = useState(null);
+  const [roadDistance, setRoadDistance] = useState(null);
+  const [roadDuration, setRoadDuration] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    resolveOrderCoordinates(order).then(coords => {
+      if (!active) return;
+      setCustomerCoords(coords);
+      setServiceCheck(checkDeliveryServiceable(coords.lat, coords.lng));
+
+      const initialRider = order.riderLocation && order.riderLocation.lat
+        ? { lat: order.riderLocation.lat, lng: order.riderLocation.lng }
+        : getInitialRiderCoordinates(coords.lat, coords.lng);
+        
+      setInitialRiderCoords(initialRider);
+      setCurrentRiderPos(initialRider);
+    });
+    return () => { active = false; };
+  }, [order]);
 
   // Sync rider position when order.riderLocation updates in Firestore
   useEffect(() => {
@@ -56,31 +78,21 @@ export default function DeliveryMapModal({ order, onClose }) {
       if (riderMarkerRef.current) {
         riderMarkerRef.current.setLatLng([livePos.lat, livePos.lng]);
       }
-      if (routePolylineRef.current) {
-        routePolylineRef.current.setLatLngs([
-          [BAHARAGORA_HUB.lat, BAHARAGORA_HUB.lng],
-          [livePos.lat, livePos.lng],
-          [customerCoords.lat, customerCoords.lng]
-        ]);
-      }
     }
   }, [order.riderLocation]);
 
-  const serviceCheck = checkDeliveryServiceable(customerCoords.lat, customerCoords.lng);
-
-  // Dynamic distance & ETA based on current rider position
-  const distanceToCustomer = calculateDistance(
+  const distanceToCustomer = currentRiderPos && customerCoords ? calculateDistance(
     currentRiderPos.lat,
     currentRiderPos.lng,
     customerCoords.lat,
     customerCoords.lng
-  );
+  ) : 0;
 
-  const currentETA = calculateETA(distanceToCustomer);
+  const currentETA = roadDuration ? `~${roadDuration} mins` : calculateETA(distanceToCustomer);
 
   // Initialize Leaflet Map
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    if (!mapContainerRef.current || !customerCoords || !initialRiderCoords || !serviceCheck) return;
 
     // Destroy existing instance if present
     if (mapInstanceRef.current) {
@@ -100,10 +112,11 @@ export default function DeliveryMapModal({ order, onClose }) {
 
     mapInstanceRef.current = map;
 
-    // Tile layer (OpenStreetMap)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19
+    // Tile layer (Google Maps Standard Roadmap)
+    L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+      attribution: '&copy; Google Maps'
     }).addTo(map);
 
     // 1. Draw 5 KM Geofence Circle around Baharagora Hub
@@ -197,8 +210,8 @@ export default function DeliveryMapModal({ order, onClose }) {
       </div>
     `);
 
-    // 5. Draw Polyline Route (Store -> Rider -> Customer)
-    const routePolyline = L.polyline(
+    // 5. Draw initial straight line placeholder while road route loads
+    const initialPolyline = L.polyline(
       [
         [BAHARAGORA_HUB.lat, BAHARAGORA_HUB.lng],
         [initialRiderCoords.lat, initialRiderCoords.lng],
@@ -206,13 +219,53 @@ export default function DeliveryMapModal({ order, onClose }) {
       ],
       {
         color: '#059669',
-        weight: 4,
-        opacity: 0.8,
-        dashArray: '6, 6'
+        weight: 5,
+        opacity: 0.7,
+        dashArray: '8, 8'
       }
     ).addTo(map);
 
-    routePolylineRef.current = routePolyline;
+    routePolylineRef.current = initialPolyline;
+
+    // 6. Fetch real road route from Google Maps Directions API
+    fetchRoadRoute(
+      { lat: BAHARAGORA_HUB.lat, lng: BAHARAGORA_HUB.lng },
+      { lat: customerCoords.lat, lng: customerCoords.lng }
+    ).then(result => {
+      if (!mapInstanceRef.current) return;
+
+      // Store the route points for simulation interpolation
+      routePointsRef.current = result.points;
+
+      // Remove placeholder straight line
+      if (routePolylineRef.current) {
+        routePolylineRef.current.remove();
+      }
+
+      const latLngs = routePointsToLatLngs(result.points);
+
+      // Draw the real road-following polyline
+      const roadPolyline = L.polyline(latLngs, {
+        color: '#059669',
+        weight: 5,
+        opacity: 0.85,
+        lineJoin: 'round',
+        lineCap: 'round'
+      }).addTo(mapInstanceRef.current);
+
+      routePolylineRef.current = roadPolyline;
+
+      if (result.success) {
+        setRoadDistance(result.totalDistanceKm);
+        setRoadDuration(result.totalDurationMins);
+      }
+
+      // Fit map bounds to the route
+      if (latLngs.length > 0) {
+        const routeBounds = L.latLngBounds(latLngs);
+        mapInstanceRef.current.fitBounds(routeBounds, { padding: [60, 60] });
+      }
+    });
 
     // Fit Map Bounds to fit all 3 points nicely
     const bounds = L.latLngBounds([
@@ -237,7 +290,7 @@ export default function DeliveryMapModal({ order, onClose }) {
         mapInstanceRef.current = null;
       }
     };
-  }, [order.id]);
+  }, [order.id, customerCoords]);
 
   // Movement Simulation Effect
   useEffect(() => {
@@ -260,32 +313,48 @@ export default function DeliveryMapModal({ order, onClose }) {
   }, [isSimulating, simSpeed]);
 
   // Update rider position based on progress ratio (0.0 to 1.0)
+  // Now follows the road route instead of a straight line
   useEffect(() => {
-    const lat = BAHARAGORA_HUB.lat + (customerCoords.lat - BAHARAGORA_HUB.lat) * simProgress;
-    const lng = BAHARAGORA_HUB.lng + (customerCoords.lng - BAHARAGORA_HUB.lng) * simProgress;
+    let roundedPos;
 
-    const roundedPos = {
-      lat: Math.round(lat * 10000) / 10000,
-      lng: Math.round(lng * 10000) / 10000
-    };
+    if (routePointsRef.current.length > 2) {
+      // Interpolate along the real road route
+      const roadPos = getPointAlongRoute(routePointsRef.current, simProgress);
+      roundedPos = {
+        lat: Math.round(roadPos.lat * 10000) / 10000,
+        lng: Math.round(roadPos.lng * 10000) / 10000
+      };
+    } else {
+      // Fallback to straight line interpolation
+      const lat = BAHARAGORA_HUB.lat + (customerCoords.lat - BAHARAGORA_HUB.lat) * simProgress;
+      const lng = BAHARAGORA_HUB.lng + (customerCoords.lng - BAHARAGORA_HUB.lng) * simProgress;
+      roundedPos = {
+        lat: Math.round(lat * 10000) / 10000,
+        lng: Math.round(lng * 10000) / 10000
+      };
+    }
 
     setCurrentRiderPos(roundedPos);
 
     if (riderMarkerRef.current) {
       riderMarkerRef.current.setLatLng([roundedPos.lat, roundedPos.lng]);
     }
-
-    if (routePolylineRef.current) {
-      routePolylineRef.current.setLatLngs([
-        [BAHARAGORA_HUB.lat, BAHARAGORA_HUB.lng],
-        [roundedPos.lat, roundedPos.lng],
-        [customerCoords.lat, customerCoords.lng]
-      ]);
-    }
-  }, [simProgress]);
+  }, [simProgress, customerCoords]);
 
   const riderName = order.deliveryPartnerName || order.staffName || 'Delivery Partner';
   const riderPhone = order.deliveryPartnerPhone || order.staffPhone || '+91 98765 43210';
+
+  if (!customerCoords || !initialRiderCoords || !serviceCheck) {
+    return (
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div className="bg-white w-full max-w-4xl rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col h-[600px] items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-emerald-500 mb-4"></div>
+          <h3 className="text-lg font-black text-slate-800">Locating Delivery Map...</h3>
+          <p className="text-sm text-slate-500 font-bold mt-1">Generating precise route from Geocoding API.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
