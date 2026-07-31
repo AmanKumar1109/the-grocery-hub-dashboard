@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
@@ -7,68 +7,12 @@ import {
   Loader2,
   CheckCircle,
   AlertTriangle,
-  Bold,
-  Italic,
-  Underline,
-  List,
-  ListOrdered,
-  Link as LinkIcon,
-  Unlink,
-  Heading1,
-  Heading2,
-  Heading3,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  Undo2,
-  Redo2,
-  Type,
-  Minus,
-  Quote,
   Eye,
   Pencil
 } from 'lucide-react';
+import JoditEditor from 'jodit-react';
 
 const POLICY_DOC_REF = doc(db, 'settings', 'privacyPolicy');
-
-// Toolbar button component
-function ToolbarBtn({ icon: Icon, label, onClick, active, disabled }) {
-  return (
-    <button
-      type="button"
-      title={label}
-      onClick={onClick}
-      disabled={disabled}
-      className={`p-2 rounded-lg transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed ${
-        active
-          ? 'bg-emerald-100 text-emerald-700 shadow-sm'
-          : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
-      }`}
-    >
-      <Icon className="w-4 h-4" />
-    </button>
-  );
-}
-
-function ToolbarSeparator() {
-  return <div className="w-px h-6 bg-slate-200 mx-1" />;
-}
-
-// Memoized Editor to prevent React from resetting contentEditable during parent re-renders
-const Editor = React.memo(({ initialContent, onInput, editorRef }) => {
-  return (
-    <div
-      ref={editorRef}
-      contentEditable
-      suppressContentEditableWarning
-      onInput={onInput}
-      dangerouslySetInnerHTML={{ __html: initialContent }}
-      className="prose prose-slate max-w-none p-8 lg:p-12 min-h-[500px] focus:outline-none privacy-policy-content"
-      data-placeholder="Start writing your privacy policy here…"
-      style={{ minHeight: 500 }}
-    />
-  );
-}, (prev, next) => prev.initialContent === next.initialContent);
 
 export default function PrivacyPolicyView() {
   const editorRef = useRef(null);
@@ -80,7 +24,7 @@ export default function PrivacyPolicyView() {
   const [error, setError] = useState(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [wordCount, setWordCount] = useState(0);
-  const [initialContent, setInitialContent] = useState('');
+  const [content, setContent] = useState('');
   const originalContent = useRef('');
 
   // Load existing policy from Firestore
@@ -90,13 +34,13 @@ export default function PrivacyPolicyView() {
         const snap = await getDoc(POLICY_DOC_REF);
         if (snap.exists()) {
           const data = snap.data();
-          const content = data.content || '';
-          setInitialContent(content);
-          originalContent.current = content;
+          const loadedContent = data.content || '';
+          setContent(loadedContent);
+          originalContent.current = loadedContent;
           if (data.updatedAt) {
             setLastUpdated(data.updatedAt.toDate());
           }
-          setTimeout(updateWordCount, 100);
+          setTimeout(() => updateWordCount(loadedContent), 100);
         }
       } catch (err) {
         console.error('Failed to load privacy policy:', err);
@@ -108,44 +52,52 @@ export default function PrivacyPolicyView() {
     loadPolicy();
   }, []);
 
-  const updateWordCount = useCallback(() => {
-    if (editorRef.current) {
-      const text = editorRef.current.innerText || '';
-      const words = text.trim().split(/\s+/).filter(Boolean).length;
-      setWordCount(words);
-    }
+  const updateWordCount = useCallback((textHtml) => {
+    // Strip html tags
+    const tmp = document.createElement("DIV");
+    tmp.innerHTML = textHtml || "";
+    const text = tmp.textContent || tmp.innerText || "";
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    setWordCount(words);
   }, []);
 
-  const handleInput = useCallback(() => {
+  const handleInput = useCallback((newContent) => {
+    setContent(newContent);
     setHasChanges(true);
     setSaved(false);
-    updateWordCount();
+    updateWordCount(newContent);
   }, [updateWordCount]);
 
-  // Execute formatting command
-  const execCmd = useCallback((command, value = null) => {
-    editorRef.current?.focus();
-    document.execCommand(command, false, value);
-    setHasChanges(true);
-    setSaved(false);
-  }, []);
-
-  const handleInsertLink = useCallback(() => {
-    const url = prompt('Enter URL:');
-    if (url) {
-      execCmd('createLink', url);
-    }
-  }, [execCmd]);
+  // Jodit Editor Config
+  const joditConfig = useMemo(() => ({
+    readonly: false,
+    placeholder: 'Start writing your privacy policy here...',
+    height: 600,
+    style: {
+      fontFamily: 'inherit',
+      color: '#334155'
+    },
+    buttons: [
+      'source', '|',
+      'bold', 'strikethrough', 'underline', 'italic', '|',
+      'superscript', 'subscript', '|',
+      'ul', 'ol', '|',
+      'outdent', 'indent', '|',
+      'font', 'fontsize', 'brush', 'paragraph', '|',
+      'image', 'video', 'table', 'link', '|',
+      'align', 'undo', 'redo', '|',
+      'hr', 'eraser', 'copyformat', '|',
+      'symbol', 'fullsize', 'print'
+    ]
+  }), []);
 
   // Save to Firestore
   const handleSave = async () => {
-    if (!editorRef.current) return;
     setSaving(true);
     setError(null);
     try {
-      const content = editorRef.current.innerHTML;
       await setDoc(POLICY_DOC_REF, {
-        content,
+        content: content,
         updatedAt: serverTimestamp()
       });
       originalContent.current = content;
@@ -248,67 +200,21 @@ export default function PrivacyPolicyView() {
 
       {/* Editor area */}
       <div className="flex-1 px-6 lg:px-10 py-6 max-w-5xl mx-auto w-full">
-        {/* Toolbar — hidden in preview mode */}
-        {!previewMode && (
-          <div className="sticky top-[85px] z-10 bg-white/90 backdrop-blur-md rounded-xl border border-slate-200 shadow-sm px-4 py-2 flex flex-wrap items-center justify-center gap-1 mb-6">
-            {/* Text formatting */}
-              <ToolbarBtn icon={Bold} label="Bold (Ctrl+B)" onClick={() => execCmd('bold')} />
-              <ToolbarBtn icon={Italic} label="Italic (Ctrl+I)" onClick={() => execCmd('italic')} />
-              <ToolbarBtn icon={Underline} label="Underline (Ctrl+U)" onClick={() => execCmd('underline')} />
-
-              <ToolbarSeparator />
-
-              {/* Headings */}
-              <ToolbarBtn icon={Heading1} label="Heading 1" onClick={() => execCmd('formatBlock', 'h1')} />
-              <ToolbarBtn icon={Heading2} label="Heading 2" onClick={() => execCmd('formatBlock', 'h2')} />
-              <ToolbarBtn icon={Heading3} label="Heading 3" onClick={() => execCmd('formatBlock', 'h3')} />
-              <ToolbarBtn icon={Type} label="Paragraph" onClick={() => execCmd('formatBlock', 'p')} />
-
-              <ToolbarSeparator />
-
-              {/* Lists */}
-              <ToolbarBtn icon={List} label="Bullet List" onClick={() => execCmd('insertUnorderedList')} />
-              <ToolbarBtn icon={ListOrdered} label="Numbered List" onClick={() => execCmd('insertOrderedList')} />
-              <ToolbarBtn icon={Quote} label="Block Quote" onClick={() => execCmd('formatBlock', 'blockquote')} />
-
-              <ToolbarSeparator />
-
-              {/* Alignment */}
-              <ToolbarBtn icon={AlignLeft} label="Align Left" onClick={() => execCmd('justifyLeft')} />
-              <ToolbarBtn icon={AlignCenter} label="Align Center" onClick={() => execCmd('justifyCenter')} />
-              <ToolbarBtn icon={AlignRight} label="Align Right" onClick={() => execCmd('justifyRight')} />
-
-              <ToolbarSeparator />
-
-              {/* Links */}
-              <ToolbarBtn icon={LinkIcon} label="Insert Link" onClick={handleInsertLink} />
-              <ToolbarBtn icon={Unlink} label="Remove Link" onClick={() => execCmd('unlink')} />
-
-              <ToolbarSeparator />
-
-              {/* Misc */}
-              <ToolbarBtn icon={Minus} label="Horizontal Rule" onClick={() => execCmd('insertHorizontalRule')} />
-              <ToolbarBtn icon={Undo2} label="Undo (Ctrl+Z)" onClick={() => execCmd('undo')} />
-              <ToolbarBtn icon={Redo2} label="Redo (Ctrl+Y)" onClick={() => execCmd('redo')} />
-            </div>
-        )}
-
-        <div className="max-w-4xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          {/* Editable content area */}
-          <div className={!previewMode ? 'hidden' : ''}>
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-200">
+          {!previewMode ? (
+            <JoditEditor
+              ref={editorRef}
+              value={content}
+              config={joditConfig}
+              onBlur={newContent => handleInput(newContent)}
+              onChange={() => {}} // React to blur to avoid re-renders on every keystroke
+            />
+          ) : (
             <div
               className="prose prose-slate max-w-none p-8 lg:p-12 min-h-[500px] privacy-policy-content"
-              dangerouslySetInnerHTML={{ __html: editorRef.current?.innerHTML || initialContent }}
+              dangerouslySetInnerHTML={{ __html: content }}
             />
-          </div>
-
-          <div className={previewMode ? 'hidden' : ''}>
-            <Editor
-              initialContent={initialContent}
-              onInput={handleInput}
-              editorRef={editorRef}
-            />
-          </div>
+          )}
         </div>
       </div>
 

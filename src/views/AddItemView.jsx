@@ -21,7 +21,7 @@ export default function AddItemView() {
     inStock: true,
     isTrending: false,
     isBogo: false,
-    image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&auto=format&fit=crop&q=80'
+    image: ''
   });
 
   // Calculate off percentage live
@@ -130,10 +130,11 @@ export default function AddItemView() {
           </button>
         </div>
 
-        {creationMode === 'excel' ? (
+        <div className={creationMode === 'excel' ? 'block' : 'hidden'}>
           <ExcelProductImporter />
-        ) : (
-          <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+        </div>
+
+        <div className={`${creationMode === 'single' ? 'block' : 'hidden'} bg-white p-8 rounded-2xl border border-slate-200 shadow-sm`}>
             <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Product Name */}
@@ -299,7 +300,6 @@ export default function AddItemView() {
             </div>
           </form>
         </div>
-        )}
       </main>
 
       {/* QUICK ADD CATEGORY MODAL */}

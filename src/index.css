@@ -29,3 +29,19 @@
   width: 100%;
   height: 100%;
 }
+
+/* Custom Scrollbar for horizontal lists */
+.custom-horizontal-scrollbar::-webkit-scrollbar {
+  height: 8px;
+}
+.custom-horizontal-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+.custom-horizontal-scrollbar::-webkit-scrollbar-thumb {
+  background: #10b981; /* emerald-500 */
+  border-radius: 6px;
+}
+.custom-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #059669; /* emerald-600 */
+}

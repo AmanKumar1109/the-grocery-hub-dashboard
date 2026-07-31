@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import {
   FileSpreadsheet,
@@ -24,7 +24,18 @@ export default function ExcelProductImporter() {
   const { categories, addItem } = useAdmin();
   const navigate = useNavigate();
 
-  const [batchItems, setBatchItems] = useState([]);
+  const [batchItems, setBatchItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ghub_batch_items');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ghub_batch_items', JSON.stringify(batchItems));
+  }, [batchItems]);
   const [errorMsg, setErrorMsg] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
@@ -108,7 +119,7 @@ export default function ExcelProductImporter() {
           };
 
           const name = findVal(['product name', 'name', 'product', 'item name', 'item', 'title', 'product_name']);
-          const category = findVal(['category', 'cat', 'department', 'type']);
+          const category = findVal(['category', 'categories', 'cat', 'department', 'type', 'categore', 'caregere', 'product category']);
           const sellingPrice = findVal(['mrp', 'mrp (₹)', 'mrp (rs)', 'selling price', 'original price', 'retail price', 'retail_price']);
           const price = findVal(['our price', 'price', 'our price (₹)', 'our price (rs)', 'sale price', 'offer price', 'cost']);
           const image = findVal(['image url', 'image', 'img', 'photo', 'picture', 'image_url']);
@@ -189,7 +200,7 @@ export default function ExcelProductImporter() {
     try {
       for (let i = 0; i < validItems.length; i++) {
         const item = validItems[i];
-        
+
         // Default fallback image if empty
         const finalImage = item.image.trim() || 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&auto=format&fit=crop&q=80';
 
@@ -265,11 +276,10 @@ export default function ExcelProductImporter() {
           onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
           onDragLeave={(e) => { e.preventDefault(); setIsDragOver(false); }}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
-            isDragOver
+          className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${isDragOver
               ? 'border-emerald-500 bg-emerald-50/60'
               : 'border-slate-200 hover:border-emerald-400 bg-slate-50/40 hover:bg-slate-50'
-          }`}
+            }`}
         >
           <div className="max-w-md mx-auto space-y-2">
             <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-xs">
@@ -380,9 +390,8 @@ export default function ExcelProductImporter() {
                           value={item.name}
                           placeholder="e.g. Fresh Tomatoes"
                           onChange={(e) => updateBatchItem(item.id, 'name', e.target.value)}
-                          className={`w-full px-3 py-1.5 rounded-lg border text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none ${
-                            !item.name.trim() ? 'border-rose-300 bg-rose-50/50' : 'border-slate-200 bg-white'
-                          }`}
+                          className={`w-full px-3 py-1.5 rounded-lg border text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none ${!item.name.trim() ? 'border-rose-300 bg-rose-50/50' : 'border-slate-200 bg-white'
+                            }`}
                         />
                       </td>
 
@@ -397,6 +406,9 @@ export default function ExcelProductImporter() {
                           {categories.map(c => (
                             <option key={c} value={c}>{c}</option>
                           ))}
+                          {item.category && item.category !== 'General' && !categories.some(c => c.toLowerCase() === item.category.toLowerCase()) && (
+                            <option value={item.category}>{item.category}</option>
+                          )}
                         </select>
                       </td>
 
@@ -421,9 +433,8 @@ export default function ExcelProductImporter() {
                           placeholder="e.g. 45"
                           value={item.price}
                           onChange={(e) => updateBatchItem(item.id, 'price', e.target.value)}
-                          className={`w-full px-2.5 py-1.5 rounded-lg border text-xs font-bold focus:ring-2 focus:ring-emerald-500 ${
-                            isMissingPrice ? 'border-amber-400 bg-amber-50 text-amber-900' : 'border-slate-200 bg-white text-slate-800'
-                          }`}
+                          className={`w-full px-2.5 py-1.5 rounded-lg border text-xs font-bold focus:ring-2 focus:ring-emerald-500 ${isMissingPrice ? 'border-amber-400 bg-amber-50 text-amber-900' : 'border-slate-200 bg-white text-slate-800'
+                            }`}
                         />
                       </td>
 
@@ -443,11 +454,10 @@ export default function ExcelProductImporter() {
                           <button
                             type="button"
                             onClick={() => setImageModalItem(item)}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap ${
-                              isMissingImage
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap ${isMissingImage
                                 ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
                                 : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                            }`}
+                              }`}
                           >
                             {isMissingImage ? '+ Add Image' : 'Edit Image'}
                           </button>
@@ -459,11 +469,10 @@ export default function ExcelProductImporter() {
                         <button
                           type="button"
                           onClick={() => updateBatchItem(item.id, 'inStock', !item.inStock)}
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold cursor-pointer transition-colors ${
-                            item.inStock
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold cursor-pointer transition-colors ${item.inStock
                               ? 'bg-emerald-100 text-emerald-800'
                               : 'bg-rose-100 text-rose-800'
-                          }`}
+                            }`}
                         >
                           {item.inStock ? 'In Stock' : 'Out'}
                         </button>

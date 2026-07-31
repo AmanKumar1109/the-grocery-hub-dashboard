@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   Package,
   Plus,
@@ -18,12 +21,14 @@ import {
   Gift,
   CheckSquare,
   Square,
-  Percent,
   ArchiveX,
   Check,
   AlertTriangle,
   Settings,
-  Loader2
+  Loader2,
+  FolderSync,
+  MoveRight,
+  PenLine
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
@@ -31,21 +36,57 @@ import ImageUploadInput from '../components/ImageUploadInput';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 
+function SortableItemWrapper({ id, children }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: 'relative',
+    zIndex: isDragging ? 50 : 1,
+    touchAction: 'none',
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </div>
+  );
+}
+
 export default function ItemsView() {
-  const { items, categories, addCategory, deleteCategory, editItem, toggleItemTrending, toggleItemBogo, toggleItemVisibility, toggleItemStock, deleteItem, bulkUpdateItems } = useAdmin();
+  const { items, categories, addCategory, deleteCategory, renameCategory, editItem, toggleItemTrending, toggleItemBogo, toggleItemVisibility, toggleItemStock, deleteItem, bulkUpdateItems, reorderItemsBatch } = useAdmin();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [outOfStockOnly, setOutOfStockOnly] = useState(false);
-  
+
   // Modals state
   const [viewingItem, setViewingItem] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [deletingItem, setDeletingItem] = useState(null);
+  const [movingItem, setMovingItem] = useState(null);
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
+  const [isRenameCategoryModalOpen, setIsRenameCategoryModalOpen] = useState(false);
+
+  // Bulk selection state
+  const [selectedItemIds, setSelectedItemIds] = useState([]);
+  const [isBulkMoveModalOpen, setIsBulkMoveModalOpen] = useState(false);
 
   // Form states
   const [newCategoryName, setNewCategoryName] = useState('');
   const [categoryError, setCategoryError] = useState('');
+
+  const [renameCategoryName, setRenameCategoryName] = useState('');
+  const [oldCategoryName, setOldCategoryName] = useState('');
+  const [moveToCategoryName, setMoveToCategoryName] = useState('');
 
   const [editFormData, setEditFormData] = useState({
     name: '',
@@ -59,6 +100,32 @@ export default function ItemsView() {
   });
 
   const listRef = useRef(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5, // 5px movement before dragging starts
+      },
+    })
+  );
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    if (active && over && active.id !== over.id) {
+      const oldIndex = filteredItems.findIndex((item) => item.id === active.id);
+      const newIndex = filteredItems.findIndex((item) => item.id === over.id);
+      
+      const originalSortOrders = filteredItems.map(item => item.sortOrder).sort((a,b) => a - b);
+      const newArray = arrayMove(filteredItems, oldIndex, newIndex);
+      
+      const batchUpdates = newArray.map((item, index) => ({
+        ...item,
+        sortOrder: originalSortOrders[index]
+      }));
+
+      await reorderItemsBatch(batchUpdates);
+    }
+  };
 
   useEffect(() => {
     if (listRef.current) {
@@ -77,8 +144,8 @@ export default function ItemsView() {
       selectedCategory === 'All'
         ? true
         : selectedCategory === '🔥 Trending'
-        ? !!item.isTrending
-        : item.category === selectedCategory;
+          ? !!item.isTrending
+          : item.category === selectedCategory;
     const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStock = outOfStockOnly ? item.inStock === false : true;
     return matchesCategory && matchesSearch && matchesStock;
@@ -128,6 +195,59 @@ export default function ItemsView() {
       await deleteItem(deletingItem.id);
       setDeletingItem(null);
     }
+  };
+
+  const handleRenameCategorySubmit = async (e) => {
+    e.preventDefault();
+    setCategoryError('');
+    if (!renameCategoryName.trim() || !oldCategoryName.trim()) return;
+
+    const success = await renameCategory(oldCategoryName, renameCategoryName);
+    if (!success) {
+      setCategoryError('Category name already exists or is invalid.');
+      return;
+    }
+
+    if (selectedCategory === oldCategoryName) {
+      setSelectedCategory(renameCategoryName.trim());
+    }
+    setIsRenameCategoryModalOpen(false);
+    setRenameCategoryName('');
+    setOldCategoryName('');
+  };
+
+  const handleMoveItemSubmit = async (e) => {
+    e.preventDefault();
+    if (movingItem && moveToCategoryName) {
+      await editItem(movingItem.id, { ...movingItem, category: moveToCategoryName });
+      setMovingItem(null);
+      setMoveToCategoryName('');
+    }
+  };
+
+  const handleBulkMoveSubmit = async (e) => {
+    e.preventDefault();
+    if (selectedItemIds.length > 0 && moveToCategoryName) {
+      const updates = { category: moveToCategoryName };
+      await bulkUpdateItems(selectedItemIds, updates);
+      setIsBulkMoveModalOpen(false);
+      setSelectedItemIds([]);
+      setMoveToCategoryName('');
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedItemIds.length === filteredItems.length) {
+      setSelectedItemIds([]);
+    } else {
+      setSelectedItemIds(filteredItems.map(i => i.id));
+    }
+  };
+
+  const toggleSelectItem = (id) => {
+    setSelectedItemIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
   };
 
   return (
@@ -180,17 +300,16 @@ export default function ItemsView() {
               />
             </div>
 
-            {/* Category Filter Pills (Smooth scroll with overflow-x-auto min-w-0) */}
-            <div className="flex items-center gap-2 overflow-x-auto min-w-0 w-full py-1 scrollbar-none">
+            {/* Category Filter Pills (Smooth scroll with custom scrollbar) */}
+            <div className="flex items-center gap-2 overflow-x-auto min-w-0 w-full pb-2 pt-1 custom-horizontal-scrollbar">
               {allCategoryTabs.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
-                    selectedCategory === cat
+                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 ${selectedCategory === cat
                       ? 'bg-emerald-600 text-white shadow-sm'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                    }`}
                 >
                   {cat}
                 </button>
@@ -206,10 +325,45 @@ export default function ItemsView() {
               >
                 <FolderPlus className="w-3.5 h-3.5" /> + Category
               </button>
+
+              {selectedCategory !== 'All' && selectedCategory !== '🔥 Trending' && (
+                <button
+                  onClick={() => {
+                    setOldCategoryName(selectedCategory);
+                    setRenameCategoryName(selectedCategory);
+                    setIsRenameCategoryModalOpen(true);
+                  }}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                  title="Rename this Category"
+                >
+                  <PenLine className="w-3.5 h-3.5" /> Rename
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={selectedItemIds.length > 0 && selectedItemIds.length === filteredItems.length}
+                  onChange={toggleSelectAll}
+                  className="w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                />
+                Select All
+              </label>
+
+              {selectedItemIds.length > 0 && (
+                <button
+                  onClick={() => setIsBulkMoveModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer"
+                >
+                  <FolderSync className="w-4 h-4" /> Move {selectedItemIds.length} Items
+                </button>
+              )}
+            </div>
+
             <label className="flex items-center gap-2 text-xs font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
               <input
                 type="checkbox"
@@ -239,27 +393,38 @@ export default function ItemsView() {
             </Link>
           </div>
         ) : (
-          <div ref={listRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredItems.map((item) => {
-              const isVisible = item.isVisible !== false;
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={filteredItems.map(i => i.id)} strategy={rectSortingStrategy}>
+              <div ref={listRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredItems.map((item) => {
+                  const isVisible = item.isVisible !== false;
 
-              return (
-                <div
-                  key={item.id}
-                  className={`bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group ${
-                    !isVisible ? 'opacity-70 bg-slate-50/80 border-dashed' : ''
-                  }`}
-                >
+                  return (
+                    <SortableItemWrapper key={item.id} id={item.id}>
+                      <div
+                        className={`bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group h-full ${!isVisible ? 'opacity-70 bg-slate-50/80 border-dashed' : ''
+                          }`}
+                      >
                   {/* Item Image & Badges */}
                   <div className="relative h-48 overflow-hidden bg-slate-100">
                     <img
                       src={item.image || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&auto=format&fit=crop&q=80'}
                       alt={item.name}
-                      className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${
-                        !isVisible ? 'grayscale-30' : ''
-                      }`}
+                      className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${!isVisible ? 'grayscale-30' : ''
+                        }`}
                     />
-                    <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+
+                    {/* Item Select Checkbox */}
+                    <div className="absolute top-3 left-3 z-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedItemIds.includes(item.id)}
+                        onChange={() => toggleSelectItem(item.id)}
+                        className="w-5 h-5 rounded shadow-sm text-emerald-600 focus:ring-emerald-500 border-white bg-white/90 cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="absolute top-10 left-3 flex flex-wrap items-center gap-1.5">
                       <span className="px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-slate-800 font-bold text-[11px] shadow-xs">
                         {item.category || 'General'}
                       </span>
@@ -280,23 +445,25 @@ export default function ItemsView() {
                     </div>
 
                     <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                      {/* Visibility Status Badge */}
-                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold shadow-xs ${
-                        isVisible
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-slate-700 text-slate-100'
-                      }`}>
+                      {/* Visibility Status Badge (Clickable One-Click Toggle) */}
+                      <button
+                        onClick={() => toggleItemVisibility(item.id, isVisible)}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold shadow-xs transition-transform active:scale-95 cursor-pointer ${isVisible
+                            ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                            : 'bg-slate-700 hover:bg-slate-800 text-slate-100'
+                          }`}
+                        title={isVisible ? 'Click to Hide Item' : 'Click to Show Item'}
+                      >
                         {isVisible ? 'Visible' : 'Hidden'}
-                      </span>
+                      </button>
 
                       {/* Stock Status Badge (Clickable One-Click Toggle) */}
                       <button
                         onClick={() => toggleItemStock(item.id, item.inStock !== false)}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold shadow-xs transition-transform active:scale-95 cursor-pointer ${
-                          item.inStock !== false
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold shadow-xs transition-transform active:scale-95 cursor-pointer ${item.inStock !== false
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                             : 'bg-rose-600 hover:bg-rose-700 text-white'
-                        }`}
+                          }`}
                         title={item.inStock !== false ? 'Click to set Out of Stock' : 'Click to set In Stock'}
                       >
                         {item.inStock !== false ? 'In Stock' : 'Out of Stock'}
@@ -325,8 +492,8 @@ export default function ItemsView() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                      <div>
+                    <div className="flex flex-col gap-3 pt-3 border-t border-slate-100">
+                      <div className="shrink-0">
                         <span className="text-[11px] text-slate-400 uppercase font-semibold block">Price</span>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-lg font-extrabold text-slate-800">₹{(item.price || 0).toFixed(2)}</span>
@@ -339,83 +506,107 @@ export default function ItemsView() {
                         </div>
                       </div>
 
-                      {/* Actions: Stock Toggle, Trending Toggle, BOGO Toggle, Eye Visibility Toggle, Edit, Delete */}
-                      <div className="flex items-center gap-1.5">
-                        {/* Quick Trending Toggle Button */}
+                      {/* Actions */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 w-full">
+
+                        {/* Quick Trending Toggle */}
                         <button
                           onClick={() => toggleItemTrending(item.id, !!item.isTrending)}
-                          className={`p-2 rounded-xl transition-all border cursor-pointer ${
-                            item.isTrending
-                              ? 'bg-amber-400 text-slate-950 border-amber-400 font-extrabold shadow-xs'
+                          className={`w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl transition-all border cursor-pointer ${item.isTrending
+                              ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-xs'
                               : 'bg-slate-50 hover:bg-amber-50 text-slate-400 hover:text-amber-600 border-slate-200'
-                          }`}
-                          title={item.isTrending ? 'Click to Remove Trending Label' : 'Click to Mark as Trending Product'}
+                            }`}
                         >
-                          <Flame className={`w-4 h-4 ${item.isTrending ? 'fill-slate-950' : ''}`} />
+                          <Flame className={`w-4 h-4 shrink-0 ${item.isTrending ? 'fill-slate-950' : ''}`} />
+                          <span className="whitespace-nowrap text-[10px] font-extrabold">
+                            Trending
+                          </span>
                         </button>
 
-                        {/* Quick BOGO Toggle Button */}
+                        {/* Quick BOGO Toggle */}
                         <button
                           onClick={() => toggleItemBogo(item.id, !!item.isBogo)}
-                          className={`p-2 rounded-xl transition-all border cursor-pointer ${
-                            item.isBogo
-                              ? 'bg-indigo-600 text-white border-indigo-600 font-extrabold shadow-xs'
+                          className={`w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl transition-all border cursor-pointer ${item.isBogo
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
                               : 'bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 border-slate-200'
-                          }`}
-                          title={item.isBogo ? 'Click to Remove Buy 1 Get 1 Offer' : 'Click to Mark as Buy 1 Get 1 Free Offer'}
+                            }`}
                         >
-                          <Gift className="w-4 h-4" />
+                          <Gift className="w-4 h-4 shrink-0" />
+                          <span className="whitespace-nowrap text-[10px] font-extrabold">
+                            Buy 1 Get 1
+                          </span>
                         </button>
 
-                        {/* Quick Stock Toggle Button */}
+                        {/* Quick Stock Toggle */}
                         <button
                           onClick={() => toggleItemStock(item.id, item.inStock !== false)}
-                          className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors border flex items-center gap-1 cursor-pointer ${
-                            item.inStock !== false
+                          className={`w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl transition-all border cursor-pointer ${item.inStock !== false
                               ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
                               : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-                          }`}
-                          title={item.inStock !== false ? 'Click to mark Out of Stock' : 'Click to mark In Stock'}
+                            }`}
                         >
-                          <Package className="w-3.5 h-3.5" />
-                          {item.inStock !== false ? 'In Stock' : 'Out of Stock'}
+                          <Package className="w-4 h-4 shrink-0" />
+                          <span className="whitespace-nowrap text-[10px] font-extrabold">
+                            {item.inStock !== false ? 'In Stock' : 'Out Stock'}
+                          </span>
                         </button>
 
-                        {/* Eye / EyeOff Visibility Toggle Button */}
+                        {/* Eye / EyeOff Visibility */}
                         <button
                           onClick={() => toggleItemVisibility(item.id, isVisible)}
-                          className={`p-2 rounded-xl transition-colors ${
-                            isVisible
-                              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200'
-                              : 'bg-slate-200 hover:bg-slate-300 text-slate-600'
-                          }`}
-                          title={isVisible ? 'Click to Hide Item (Set Visibility False)' : 'Click to Show Item (Set Visibility True)'}
+                          className={`w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl transition-all border cursor-pointer ${isVisible
+                              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                              : 'bg-slate-200 hover:bg-slate-300 text-slate-600 border-slate-300'
+                            }`}
                         >
-                          {isVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 text-slate-600" />}
+                          {isVisible ? <Eye className="w-4 h-4 shrink-0" /> : <EyeOff className="w-4 h-4 shrink-0 text-slate-600" />}
+                          <span className="whitespace-nowrap text-[10px] font-extrabold">
+                            {isVisible ? 'Visible' : 'Hidden'}
+                          </span>
                         </button>
 
+                        {/* Edit Item */}
                         <button
                           onClick={() => handleStartEdit(item)}
-                          className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-emerald-600 transition-colors"
-                          title="Edit Item"
+                          className="w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-emerald-600 border border-slate-200 transition-all cursor-pointer"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Edit2 className="w-4 h-4 shrink-0" />
+                          <span className="whitespace-nowrap text-[10px] font-extrabold">
+                            Edit
+                          </span>
                         </button>
 
+                        {/* Move Item */}
+                        <button
+                          onClick={() => setMovingItem(item)}
+                          className="w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 transition-all cursor-pointer"
+                        >
+                          <MoveRight className="w-4 h-4 shrink-0" />
+                          <span className="whitespace-nowrap text-[10px] font-extrabold">
+                            Move
+                          </span>
+                        </button>
+
+                        {/* Delete Item */}
                         <button
                           onClick={() => setDeletingItem(item)}
-                          className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors"
-                          title="Delete Item"
+                          className="w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-all cursor-pointer"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4 shrink-0" />
+                          <span className="whitespace-nowrap text-[10px] font-extrabold">
+                            Delete
+                          </span>
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </SortableItemWrapper>
+            );
+          })}
+            </div>
+            </SortableContext>
+          </DndContext>
         )}
       </main>
 
@@ -475,21 +666,36 @@ export default function ItemsView() {
                       className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 transition-colors"
                     >
                       <span className="text-xs font-bold text-slate-800">{c}</span>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (window.confirm(`Are you sure you want to delete category "${c}"?`)) {
-                            await deleteCategory(c);
-                            if (selectedCategory === c) {
-                              setSelectedCategory('All');
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOldCategoryName(c);
+                            setRenameCategoryName(c);
+                            setIsAddCategoryModalOpen(false);
+                            setIsRenameCategoryModalOpen(true);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-[11px] font-bold border border-amber-200 flex items-center gap-1 transition-colors cursor-pointer"
+                          title={`Rename Category "${c}"`}
+                        >
+                          <PenLine className="w-3.5 h-3.5" /> Rename
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (window.confirm(`Are you sure you want to delete category "${c}"?`)) {
+                              await deleteCategory(c);
+                              if (selectedCategory === c) {
+                                setSelectedCategory('All');
+                              }
                             }
-                          }
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-bold border border-rose-200 flex items-center gap-1 transition-colors cursor-pointer"
-                        title={`Delete Category "${c}"`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Delete
-                      </button>
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-bold border border-rose-200 flex items-center gap-1 transition-colors cursor-pointer"
+                          title={`Delete Category "${c}"`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -691,6 +897,157 @@ export default function ItemsView() {
                 Yes, Delete Item
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* RENAME CATEGORY MODAL */}
+      {isRenameCategoryModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white w-full max-w-sm rounded-2xl border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                  <PenLine className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-slate-800">Rename Category</h3>
+              </div>
+              <button onClick={() => setIsRenameCategoryModalOpen(false)} className="text-slate-400 hover:text-slate-700 bg-slate-50 p-1.5 rounded-full">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRenameCategorySubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1.5">New Category Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={renameCategoryName}
+                  onChange={(e) => setRenameCategoryName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                  placeholder="e.g. Fresh Vegetables"
+                />
+              </div>
+              {categoryError && <p className="text-[11px] text-rose-500 font-bold">{categoryError}</p>}
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
+                <p className="text-[10px] text-amber-800 font-bold leading-tight flex items-start gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  Renaming this category will instantly update all items currently assigned to it!
+                </p>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button type="button" onClick={() => setIsRenameCategoryModalOpen(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">
+                  Cancel
+                </button>
+                <button type="submit" className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm">
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MOVE ITEM MODAL */}
+      {movingItem && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white w-full max-w-sm rounded-2xl border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+                  <MoveRight className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-slate-800">Move Item</h3>
+              </div>
+              <button onClick={() => setMovingItem(null)} className="text-slate-400 hover:text-slate-700 bg-slate-50 p-1.5 rounded-full">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleMoveItemSubmit} className="space-y-4">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <p className="text-xs text-slate-500 font-semibold mb-1">Moving Product:</p>
+                <p className="text-sm font-bold text-slate-800 truncate">{movingItem.name}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Current Category: {movingItem.category}</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1.5">Select New Category *</label>
+                <select
+                  required
+                  value={moveToCategoryName}
+                  onChange={(e) => setMoveToCategoryName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="" disabled>Select category...</option>
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button type="button" onClick={() => setMovingItem(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">
+                  Cancel
+                </button>
+                <button type="submit" className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm">
+                  Move Item
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* BULK MOVE MODAL */}
+      {isBulkMoveModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white w-full max-w-sm rounded-2xl border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+                  <FolderSync className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-slate-800">Bulk Move Items</h3>
+              </div>
+              <button onClick={() => setIsBulkMoveModalOpen(false)} className="text-slate-400 hover:text-slate-700 bg-slate-50 p-1.5 rounded-full">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleBulkMoveSubmit} className="space-y-4">
+              <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-center">
+                <p className="text-sm font-black text-indigo-800">{selectedItemIds.length} Items Selected</p>
+                <p className="text-[11px] text-indigo-600 font-semibold mt-1">Ready to be moved to a new category</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1.5">Select New Category *</label>
+                <select
+                  required
+                  value={moveToCategoryName}
+                  onChange={(e) => setMoveToCategoryName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="" disabled>Select category...</option>
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button type="button" onClick={() => setIsBulkMoveModalOpen(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">
+                  Cancel
+                </button>
+                <button type="submit" className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm">
+                  Move Items
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

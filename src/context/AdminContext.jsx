@@ -125,8 +125,9 @@ export const AdminProvider = ({ children }) => {
     // Items snapshot
     const unsubItems = onSnapshot(collection(db, 'items'), (snap) => {
       const loaded = snap.docs
-        .map(d => ({ id: d.id, isVisible: d.data().isVisible !== false, ...d.data() }))
-        .filter(item => !['ITEM-101', 'ITEM-102', 'ITEM-103', 'ITEM-104', 'ITEM-105', 'ITEM-106'].includes(item.id));
+        .map(d => ({ id: d.id, isVisible: d.data().isVisible !== false, sortOrder: d.data().sortOrder || 0, ...d.data() }))
+        .filter(item => !['ITEM-101', 'ITEM-102', 'ITEM-103', 'ITEM-104', 'ITEM-105', 'ITEM-106'].includes(item.id))
+        .sort((a, b) => a.sortOrder - b.sortOrder);
       setItems(loaded);
       setIsLoading(false);
     });
@@ -297,10 +298,43 @@ export const AdminProvider = ({ children }) => {
     await addAuditLog('CATEGORY_DELETED', `Removed menu category "${categoryName}"`, 'Catalog', 'danger');
   };
 
+  const renameCategory = async (oldName, newName) => {
+    const trimmedNew = newName.trim();
+    if (!trimmedNew || oldName === trimmedNew) return false;
+    if (categories.some(c => c.toLowerCase() === trimmedNew.toLowerCase())) return false;
+
+    // 1. Create new category doc
+    await setDoc(doc(db, 'categories', trimmedNew), { name: trimmedNew });
+
+    // 2. Find all items in the old category and update them
+    const itemsToUpdate = items.filter(i => i.category === oldName);
+    
+    if (itemsToUpdate.length > 0) {
+      const batch = writeBatch(db);
+      // Firestore batches support up to 500 operations. We'll assume < 500 items per category for now.
+      itemsToUpdate.forEach(item => {
+        const itemRef = doc(db, 'items', item.id);
+        batch.update(itemRef, { category: trimmedNew });
+      });
+      await batch.commit();
+    }
+
+    // 3. Delete old category doc
+    await deleteDoc(doc(db, 'categories', oldName));
+
+    await addAuditLog('CATEGORY_RENAMED', `Renamed category "${oldName}" to "${trimmedNew}" and updated ${itemsToUpdate.length} items.`, 'Catalog', 'warning');
+    return true;
+  };
+
   // Actions for Items & Visibility Toggle
   const addItem = async (newItem) => {
-    const finalCategory = newItem.category && newItem.category.trim() ? newItem.category.trim() : 'General';
-    if (finalCategory && finalCategory !== 'General' && !categories.includes(finalCategory)) {
+    let finalCategory = newItem.category && newItem.category.trim() ? newItem.category.trim() : 'General';
+    
+    // Case-insensitive match to prevent duplicate categories from Excel imports
+    const existingMatch = categories.find(c => c.toLowerCase() === finalCategory.toLowerCase());
+    if (existingMatch) {
+      finalCategory = existingMatch;
+    } else if (finalCategory !== 'General') {
       await addCategory(finalCategory);
     }
     const itemId = `ITEM-${Math.floor(100 + Math.random() * 900)}`;
@@ -404,6 +438,20 @@ export const AdminProvider = ({ children }) => {
     const target = items.find(i => i.id === id);
     await deleteDoc(doc(db, 'items', id));
     await addAuditLog('ITEM_DELETED', `Deleted menu item "${target?.name || id}" from Firestore database`, 'Catalog', 'danger');
+  };
+
+  const reorderItemsBatch = async (updatedItemsArray) => {
+    try {
+      const batch = writeBatch(db);
+      updatedItemsArray.forEach((item, index) => {
+        const itemRef = doc(db, 'items', item.id);
+        batch.update(itemRef, { sortOrder: index });
+      });
+      await batch.commit();
+      await addAuditLog('ITEMS_REORDERED', `Reordered ${updatedItemsArray.length} items in the catalog`, 'Catalog', 'success');
+    } catch (err) {
+      console.error("Error reordering items:", err);
+    }
   };
 
   // Actions for Orders
@@ -666,6 +714,7 @@ export const AdminProvider = ({ children }) => {
       cancelReasonsList,
       addCategory,
       deleteCategory,
+      renameCategory,
       addItem,
       editItem,
       toggleItemTrending,
@@ -674,6 +723,7 @@ export const AdminProvider = ({ children }) => {
       toggleItemStock,
       deleteItem,
       bulkUpdateItems,
+      reorderItemsBatch,
       updateOrderStatus,
       cancelOrder,
       sendDelayNotification,
