@@ -18,11 +18,15 @@ import {
   RefreshCw,
   Eye,
   User,
-  CreditCard
+  CreditCard,
+  Navigation,
+  ShieldCheck
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
 import ThermalReceiptModal from '../components/ThermalReceiptModal';
+import DeliveryMapModal from '../components/DeliveryMapModal';
+import { checkDeliveryServiceable, resolveOrderCoordinates } from '../utils/locationUtils';
 import gsap from 'gsap';
 
 export default function CurrentOrdersView() {
@@ -35,6 +39,9 @@ export default function CurrentOrdersView() {
 
   // View Customer Details Modal state
   const [viewDetailsOrder, setViewDetailsOrder] = useState(null);
+
+  // Live Map Tracking Modal state
+  const [trackingOrder, setTrackingOrder] = useState(null);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -228,7 +235,16 @@ export default function CurrentOrdersView() {
                       <h3 className="font-extrabold text-slate-800 text-base mt-0.5">{order.customerName || 'Valued Customer'}</h3>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {/* Track Live Map Button */}
+                      <button
+                        onClick={() => setTrackingOrder(order)}
+                        className="px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                        title="Track Live Rider & Customer Map"
+                      >
+                        <Navigation className="w-3.5 h-3.5 text-emerald-400 animate-pulse" /> Track Map
+                      </button>
+
                       {/* Customer Details Button */}
                       <button
                         onClick={() => setViewDetailsOrder(order)}
@@ -266,18 +282,36 @@ export default function CurrentOrdersView() {
                     </div>
                   </div>
 
-                  <div className="space-y-1 text-xs text-slate-600">
-                    <p className="flex items-center gap-2 text-slate-700 font-medium">
-                      <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span className="truncate">
-                        {typeof order.address === 'string' ? order.address : (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : `${order.deliveryAddress?.street || ''}, ${order.deliveryAddress?.city || ''}`)}
-                      </span>
-                    </p>
-                    <p className="flex items-center gap-2 text-slate-500">
-                      <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      {order.customerPhone || 'N/A'}
-                    </p>
-                  </div>
+                  {/* Address & Baharagora 5 KM Zone Check */}
+                  {(() => {
+                    const coords = resolveOrderCoordinates(order);
+                    const check = checkDeliveryServiceable(coords.lat, coords.lng);
+                    return (
+                      <div className="space-y-1.5 text-xs text-slate-600">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="flex items-center gap-2 text-slate-700 font-medium truncate">
+                            <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className="truncate">
+                              {typeof order.address === 'string' ? order.address : (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : `${order.deliveryAddress?.street || ''}, ${order.deliveryAddress?.city || ''}`)}
+                            </span>
+                          </p>
+                          {check.isServiceable ? (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[10px] whitespace-nowrap shrink-0 flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3 text-emerald-600" /> {check.distanceKm} km (Serviced)
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-extrabold text-[10px] whitespace-nowrap shrink-0 flex items-center gap-1 animate-pulse">
+                              <AlertTriangle className="w-3 h-3 text-rose-600" /> {check.distanceKm} km (Exceeds 5km!)
+                            </span>
+                          )}
+                        </div>
+                        <p className="flex items-center gap-2 text-slate-500">
+                          <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          {order.customerPhone || 'N/A'}
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Ordered Grocery Items List */}
@@ -405,6 +439,14 @@ export default function CurrentOrdersView() {
           </div>
         )}
       </main>
+
+      {/* LIVE DELIVERY TRACKING MAP MODAL */}
+      {trackingOrder && (
+        <DeliveryMapModal
+          order={trackingOrder}
+          onClose={() => setTrackingOrder(null)}
+        />
+      )}
 
       {/* THERMAL POS RECEIPT MODAL */}
       {printingOrder && (

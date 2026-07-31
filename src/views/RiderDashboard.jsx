@@ -28,6 +28,7 @@ import {
   WifiOff,
   X
 } from 'lucide-react';
+import DeliveryMapModal from '../components/DeliveryMapModal';
 
 // Status config
 const STATUS_CONFIG = {
@@ -98,6 +99,7 @@ export default function RiderDashboard() {
   const [toast, setToast] = useState(null);
   const [deliveringId, setDeliveringId] = useState(null); // orderId being delivered
   const [expandedOrder, setExpandedOrder] = useState(null);
+  const [mapOrder, setMapOrder] = useState(null);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -395,8 +397,16 @@ export default function RiderDashboard() {
                       )}
                     </div>
 
-                    {/* Mark as Delivered CTA */}
-                    <div className="px-5 pb-5">
+                    {/* Navigation Map CTA & Mark as Delivered CTA */}
+                    <div className="px-5 pb-5 space-y-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setMapOrder(order)}
+                        className="w-full py-3 rounded-2xl bg-slate-700/80 hover:bg-slate-700 text-emerald-300 text-xs font-black flex items-center justify-center gap-2 border border-emerald-500/30 transition-all cursor-pointer shadow-xs"
+                      >
+                        <Navigation className="w-4 h-4 text-emerald-400 animate-pulse" /> Open Live Navigation Map
+                      </button>
+
                       <button
                         onClick={() => handleMarkDelivered(order)}
                         disabled={isDelivering || !canDeliver}
@@ -460,6 +470,13 @@ export default function RiderDashboard() {
           <div className="text-center py-8">
             <p className="text-xs text-slate-500">No orders assigned yet. Contact your admin.</p>
           </div>
+        )}
+        {/* Live Delivery Tracking Map Modal */}
+        {mapOrder && (
+          <DeliveryMapModal
+            order={mapOrder}
+            onClose={() => setMapOrder(null)}
+          />
         )}
       </main>
     </div>
