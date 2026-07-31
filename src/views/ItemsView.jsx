@@ -402,206 +402,213 @@ export default function ItemsView() {
                   return (
                     <SortableItemWrapper key={item.id} id={item.id}>
                       <div
-                        className={`bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group h-full ${!isVisible ? 'opacity-70 bg-slate-50/80 border-dashed' : ''
-                          }`}
-                      >
-                  {/* Item Image & Badges */}
-                  <div className="relative h-48 overflow-hidden bg-slate-100">
-                    <img
-                      src={item.image || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&auto=format&fit=crop&q=80'}
-                      alt={item.name}
-                      className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${!isVisible ? 'grayscale-30' : ''
+                        className={`bg-white rounded-3xl border border-slate-200/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_30px_-6px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col group h-full relative ${
+                          !isVisible ? 'opacity-75 bg-slate-50 border-dashed' : ''
                         }`}
-                    />
-
-                    {/* Item Select Checkbox */}
-                    <div className="absolute top-3 left-3 z-10">
-                      <input
-                        type="checkbox"
-                        checked={selectedItemIds.includes(item.id)}
-                        onChange={() => toggleSelectItem(item.id)}
-                        className="w-5 h-5 rounded shadow-sm text-emerald-600 focus:ring-emerald-500 border-white bg-white/90 cursor-pointer"
-                      />
-                    </div>
-
-                    <div className="absolute top-10 left-3 flex flex-wrap items-center gap-1.5">
-                      <span className="px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-slate-800 font-bold text-[11px] shadow-xs">
-                        {item.category || 'General'}
-                      </span>
-
-                      {/* Trending Overlay Badge */}
-                      {item.isTrending && (
-                        <span className="px-2.5 py-1 rounded-full bg-amber-500 text-slate-950 font-black text-[11px] shadow-md flex items-center gap-1">
-                          <Flame className="w-3 h-3 fill-slate-950" /> Trending
-                        </span>
-                      )}
-
-                      {/* Buy 1 Get 1 Free Overlay Badge */}
-                      {item.isBogo && (
-                        <span className="px-2.5 py-1 rounded-full bg-indigo-600 text-white font-black text-[11px] shadow-md flex items-center gap-1">
-                          <Gift className="w-3 h-3 text-white" /> Buy 1 Get 1
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                      {/* Visibility Status Badge (Clickable One-Click Toggle) */}
-                      <button
-                        onClick={() => toggleItemVisibility(item.id, isVisible)}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold shadow-xs transition-transform active:scale-95 cursor-pointer ${isVisible
-                            ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                            : 'bg-slate-700 hover:bg-slate-800 text-slate-100'
-                          }`}
-                        title={isVisible ? 'Click to Hide Item' : 'Click to Show Item'}
                       >
-                        {isVisible ? 'Visible' : 'Hidden'}
-                      </button>
+                        {/* Item Image & Badges Container */}
+                        <div className="relative h-52 overflow-hidden bg-slate-900 group">
+                          <img
+                            src={item.image || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&auto=format&fit=crop&q=80'}
+                            alt={item.name}
+                            className={`w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out ${
+                              !isVisible ? 'grayscale-50' : ''
+                            }`}
+                          />
 
-                      {/* Stock Status Badge (Clickable One-Click Toggle) */}
-                      <button
-                        onClick={() => toggleItemStock(item.id, item.inStock !== false)}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold shadow-xs transition-transform active:scale-95 cursor-pointer ${item.inStock !== false
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                            : 'bg-rose-600 hover:bg-rose-700 text-white'
-                          }`}
-                        title={item.inStock !== false ? 'Click to set Out of Stock' : 'Click to set In Stock'}
-                      >
-                        {item.inStock !== false ? 'In Stock' : 'Out of Stock'}
-                      </button>
-                    </div>
-                  </div>
+                          {/* Gradient Overlays for Badges Contrast */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/40 opacity-80 pointer-events-none"></div>
 
-                  {/* Content */}
-                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-bold text-slate-800 text-base group-hover:text-emerald-700 transition-colors">
-                          {item.name}
-                        </h3>
-                        <div className="flex flex-col items-end gap-1">
-                          <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100 text-amber-700 font-bold text-xs">
-                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                            {item.rating || 5.0}
+                          {/* Top Left: Checkbox & Category Tag */}
+                          <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedItemIds.includes(item.id)}
+                              onChange={() => toggleSelectItem(item.id)}
+                              className="w-5 h-5 rounded-lg shadow-md text-emerald-600 focus:ring-emerald-500 border-white/80 bg-white/90 cursor-pointer transition-transform active:scale-90"
+                            />
+
+                            <span className="px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-slate-900 font-extrabold text-[11px] shadow-sm tracking-tight border border-white/40">
+                              {item.category || 'General'}
+                            </span>
                           </div>
-                          {item.recentBuyers > 0 && (
-                            <div className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 font-bold whitespace-nowrap">
-                              {item.recentBuyers} Buyers
+
+                          {/* Top Right: One-Click Stock & Visibility Badges */}
+                          <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                            {/* Visibility Badge */}
+                            <button
+                              onClick={() => toggleItemVisibility(item.id, isVisible)}
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-black shadow-md backdrop-blur-md transition-all active:scale-95 cursor-pointer flex items-center gap-1 border ${
+                                isVisible
+                                  ? 'bg-emerald-500/90 hover:bg-emerald-600 text-white border-emerald-400/50'
+                                  : 'bg-slate-800/90 hover:bg-slate-900 text-slate-300 border-slate-700'
+                              }`}
+                              title={isVisible ? 'Click to Hide' : 'Click to Show'}
+                            >
+                              {isVisible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                              {isVisible ? 'Visible' : 'Hidden'}
+                            </button>
+
+                            {/* Stock Badge */}
+                            <button
+                              onClick={() => toggleItemStock(item.id, item.inStock !== false)}
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-black shadow-md backdrop-blur-md transition-all active:scale-95 cursor-pointer flex items-center gap-1 border ${
+                                item.inStock !== false
+                                  ? 'bg-emerald-600/90 hover:bg-emerald-700 text-white border-emerald-400/50'
+                                  : 'bg-rose-600/90 hover:bg-rose-700 text-white border-rose-400/50'
+                              }`}
+                              title={item.inStock !== false ? 'Click to mark Out of Stock' : 'Click to mark In Stock'}
+                            >
+                              <Package className="w-3 h-3" />
+                              {item.inStock !== false ? 'In Stock' : 'Out of Stock'}
+                            </button>
+                          </div>
+
+                          {/* Bottom Image Overlay Badges: Trending & BOGO */}
+                          <div className="absolute bottom-3 left-3 z-10 flex flex-wrap items-center gap-1.5">
+                            {item.isTrending && (
+                              <span className="px-2.5 py-1 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] shadow-lg flex items-center gap-1 border border-amber-300">
+                                <Flame className="w-3 h-3 fill-slate-950" /> Trending
+                              </span>
+                            )}
+
+                            {item.isBogo && (
+                              <span className="px-2.5 py-1 rounded-full bg-indigo-600 text-white font-black text-[10px] shadow-lg flex items-center gap-1 border border-indigo-400">
+                                <Gift className="w-3 h-3 text-white" /> Buy 1 Get 1
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Card Main Content */}
+                        <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                          <div>
+                            {/* Title & Rating */}
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className="font-extrabold text-slate-900 text-base leading-snug group-hover:text-emerald-600 transition-colors line-clamp-2">
+                                {item.name}
+                              </h3>
+                              <div className="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-xl border border-amber-200/60 text-amber-700 font-extrabold text-xs shrink-0 shadow-2xs">
+                                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                <span>{item.rating || 5.0}</span>
+                              </div>
                             </div>
-                          )}
+
+                            {item.recentBuyers > 0 && (
+                              <span className="inline-block mt-1 text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-100 font-bold">
+                                🔥 {item.recentBuyers} recent buyers
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Price & Discounts Block */}
+                          <div className="pt-3 border-t border-slate-100 space-y-3">
+                            <div className="flex items-baseline justify-between">
+                              <div>
+                                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Price</span>
+                                <div className="flex items-baseline gap-2 flex-wrap mt-0.5">
+                                  <span className="text-xl font-black text-slate-900 tracking-tight">₹{(item.price || 0).toFixed(2)}</span>
+                                  {item.sellingPrice > 0 && item.sellingPrice > item.price && (
+                                    <span className="text-xs text-slate-400 line-through font-bold">₹{(item.sellingPrice).toFixed(2)}</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {item.offPercentage > 0 && (
+                                <span className="px-2 py-0.5 rounded-lg bg-rose-500 text-white text-[10px] font-black shadow-xs tracking-wider uppercase">
+                                  {item.offPercentage}% OFF
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Quick Feature Toggles Bar (4 Controls Grid) */}
+                            <div className="grid grid-cols-2 gap-1.5 bg-slate-50 p-2 rounded-2xl border border-slate-100">
+                              {/* Trending Switch */}
+                              <button
+                                onClick={() => toggleItemTrending(item.id, !!item.isTrending)}
+                                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer border ${
+                                  item.isTrending
+                                    ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-xs'
+                                    : 'bg-white text-slate-500 border-slate-200 hover:bg-amber-50 hover:text-amber-600'
+                                }`}
+                              >
+                                <Flame className={`w-3.5 h-3.5 ${item.isTrending ? 'fill-slate-950' : ''}`} />
+                                <span>Trending</span>
+                              </button>
+
+                              {/* BOGO Switch */}
+                              <button
+                                onClick={() => toggleItemBogo(item.id, !!item.isBogo)}
+                                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer border ${
+                                  item.isBogo
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                                    : 'bg-white text-slate-500 border-slate-200 hover:bg-indigo-50 hover:text-indigo-600'
+                                }`}
+                              >
+                                <Gift className="w-3.5 h-3.5" />
+                                <span>Buy 1 Get 1</span>
+                              </button>
+
+                              {/* Stock Switch */}
+                              <button
+                                onClick={() => toggleItemStock(item.id, item.inStock !== false)}
+                                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer border ${
+                                  item.inStock !== false
+                                    ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                                    : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                                }`}
+                              >
+                                <Package className="w-3.5 h-3.5" />
+                                <span>{item.inStock !== false ? 'In Stock' : 'Out Stock'}</span>
+                              </button>
+
+                              {/* Visibility Switch */}
+                              <button
+                                onClick={() => toggleItemVisibility(item.id, isVisible)}
+                                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer border ${
+                                  isVisible
+                                    ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                                    : 'bg-slate-200 hover:bg-slate-300 text-slate-700 border-slate-300'
+                                }`}
+                              >
+                                {isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 text-slate-600" />}
+                                <span>{isVisible ? 'Visible' : 'Hidden'}</span>
+                              </button>
+                            </div>
+
+                            {/* Primary Action Buttons (Edit, Move, Delete) */}
+                            <div className="grid grid-cols-3 gap-1.5 pt-1">
+                              {/* Edit Button */}
+                              <button
+                                onClick={() => handleStartEdit(item)}
+                                className="py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200/80 flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                                <span>Edit</span>
+                              </button>
+
+                              {/* Move Button */}
+                              <button
+                                onClick={() => setMovingItem(item)}
+                                className="py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200/80 flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs"
+                              >
+                                <MoveRight className="w-3.5 h-3.5" />
+                                <span>Move</span>
+                              </button>
+
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => setDeletingItem(item)}
+                                className="py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs border border-rose-200/80 flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="flex flex-col gap-3 pt-3 border-t border-slate-100">
-                      <div className="shrink-0">
-                        <span className="text-[11px] text-slate-400 uppercase font-semibold block">Price</span>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-lg font-extrabold text-slate-800">₹{(item.price || 0).toFixed(2)}</span>
-                          {item.sellingPrice > 0 && item.sellingPrice > item.price && (
-                            <span className="text-xs text-slate-400 line-through">₹{(item.sellingPrice).toFixed(2)}</span>
-                          )}
-                          {item.offPercentage > 0 && (
-                            <span className="px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-600 text-[10px] font-bold border border-rose-100">{item.offPercentage}% OFF</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 w-full">
-
-                        {/* Quick Trending Toggle */}
-                        <button
-                          onClick={() => toggleItemTrending(item.id, !!item.isTrending)}
-                          className={`w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl transition-all border cursor-pointer ${item.isTrending
-                              ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-xs'
-                              : 'bg-slate-50 hover:bg-amber-50 text-slate-400 hover:text-amber-600 border-slate-200'
-                            }`}
-                        >
-                          <Flame className={`w-4 h-4 shrink-0 ${item.isTrending ? 'fill-slate-950' : ''}`} />
-                          <span className="whitespace-nowrap text-[10px] font-extrabold">
-                            Trending
-                          </span>
-                        </button>
-
-                        {/* Quick BOGO Toggle */}
-                        <button
-                          onClick={() => toggleItemBogo(item.id, !!item.isBogo)}
-                          className={`w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl transition-all border cursor-pointer ${item.isBogo
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                              : 'bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 border-slate-200'
-                            }`}
-                        >
-                          <Gift className="w-4 h-4 shrink-0" />
-                          <span className="whitespace-nowrap text-[10px] font-extrabold">
-                            Buy 1 Get 1
-                          </span>
-                        </button>
-
-                        {/* Quick Stock Toggle */}
-                        <button
-                          onClick={() => toggleItemStock(item.id, item.inStock !== false)}
-                          className={`w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl transition-all border cursor-pointer ${item.inStock !== false
-                              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
-                              : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-                            }`}
-                        >
-                          <Package className="w-4 h-4 shrink-0" />
-                          <span className="whitespace-nowrap text-[10px] font-extrabold">
-                            {item.inStock !== false ? 'In Stock' : 'Out Stock'}
-                          </span>
-                        </button>
-
-                        {/* Eye / EyeOff Visibility */}
-                        <button
-                          onClick={() => toggleItemVisibility(item.id, isVisible)}
-                          className={`w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl transition-all border cursor-pointer ${isVisible
-                              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
-                              : 'bg-slate-200 hover:bg-slate-300 text-slate-600 border-slate-300'
-                            }`}
-                        >
-                          {isVisible ? <Eye className="w-4 h-4 shrink-0" /> : <EyeOff className="w-4 h-4 shrink-0 text-slate-600" />}
-                          <span className="whitespace-nowrap text-[10px] font-extrabold">
-                            {isVisible ? 'Visible' : 'Hidden'}
-                          </span>
-                        </button>
-
-                        {/* Edit Item */}
-                        <button
-                          onClick={() => handleStartEdit(item)}
-                          className="w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-emerald-600 border border-slate-200 transition-all cursor-pointer"
-                        >
-                          <Edit2 className="w-4 h-4 shrink-0" />
-                          <span className="whitespace-nowrap text-[10px] font-extrabold">
-                            Edit
-                          </span>
-                        </button>
-
-                        {/* Move Item */}
-                        <button
-                          onClick={() => setMovingItem(item)}
-                          className="w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 transition-all cursor-pointer"
-                        >
-                          <MoveRight className="w-4 h-4 shrink-0" />
-                          <span className="whitespace-nowrap text-[10px] font-extrabold">
-                            Move
-                          </span>
-                        </button>
-
-                        {/* Delete Item */}
-                        <button
-                          onClick={() => setDeletingItem(item)}
-                          className="w-full justify-center group flex items-center gap-1.5 p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4 shrink-0" />
-                          <span className="whitespace-nowrap text-[10px] font-extrabold">
-                            Delete
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </SortableItemWrapper>
+                    </SortableItemWrapper>
             );
           })}
             </div>

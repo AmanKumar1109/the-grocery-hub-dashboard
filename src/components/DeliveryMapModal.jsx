@@ -29,6 +29,17 @@ import {
 } from '../utils/locationUtils';
 import { fetchRoadRoute, routePointsToLatLngs, getPointAlongRoute } from '../utils/routeService';
 
+const getSafeAddress = (orderObj) => {
+  if (!orderObj) return 'Baharagora, Jharkhand';
+  const addr = orderObj.address || orderObj.customerAddress || orderObj.deliveryAddress;
+  if (typeof addr === 'string') return addr;
+  if (typeof addr === 'object' && addr !== null) {
+    const parts = [addr.street, addr.city, addr.pincode].filter(Boolean);
+    if (parts.length > 0) return parts.join(', ');
+  }
+  return 'Baharagora, Jharkhand';
+};
+
 export default function DeliveryMapModal({ order, onClose }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -59,8 +70,9 @@ export default function DeliveryMapModal({ order, onClose }) {
       setCustomerCoords(coords);
       setServiceCheck(checkDeliveryServiceable(coords.lat, coords.lng));
 
-      const initialRider = order.riderLocation && order.riderLocation.lat
-        ? { lat: order.riderLocation.lat, lng: order.riderLocation.lng }
+      const isValid = (val) => val !== null && val !== undefined && val !== '' && !isNaN(parseFloat(val));
+      const initialRider = order.riderLocation && isValid(order.riderLocation.lat) && isValid(order.riderLocation.lng)
+        ? { lat: parseFloat(order.riderLocation.lat), lng: parseFloat(order.riderLocation.lng) }
         : getInitialRiderCoordinates(coords.lat, coords.lng);
         
       setInitialRiderCoords(initialRider);
@@ -71,8 +83,9 @@ export default function DeliveryMapModal({ order, onClose }) {
 
   // Sync rider position when order.riderLocation updates in Firestore
   useEffect(() => {
-    if (order.riderLocation && order.riderLocation.lat && order.riderLocation.lng) {
-      const livePos = { lat: order.riderLocation.lat, lng: order.riderLocation.lng };
+    const isValid = (val) => val !== null && val !== undefined && val !== '' && !isNaN(parseFloat(val));
+    if (order.riderLocation && isValid(order.riderLocation.lat) && isValid(order.riderLocation.lng)) {
+      const livePos = { lat: parseFloat(order.riderLocation.lat), lng: parseFloat(order.riderLocation.lng) };
       setCurrentRiderPos(livePos);
 
       if (riderMarkerRef.current) {
@@ -191,7 +204,7 @@ export default function DeliveryMapModal({ order, onClose }) {
     customerMarker.bindPopup(`
       <div style="font-family: sans-serif; padding: 4px;">
         <strong style="color: #1e293b; font-size: 13px;">👤 Customer: ${order.customerName || 'Valued Customer'}</strong>
-        <p style="margin: 4px 0 0; font-size: 11px; color: #475569;">📍 ${order.customerAddress || 'Baharagora'}</p>
+        <p style="margin: 4px 0 0; font-size: 11px; color: #475569;">📍 ${getSafeAddress(order)}</p>
         <p style="margin: 4px 0 0; font-size: 11px; font-weight: bold; color: ${serviceCheck.isServiceable ? '#059669' : '#e11d48'};">
           Distance from Hub: ${serviceCheck.distanceKm} km (${serviceCheck.isServiceable ? 'Within 5km Zone' : 'Beyond 5km Limit!'})
         </p>
@@ -315,6 +328,8 @@ export default function DeliveryMapModal({ order, onClose }) {
   // Update rider position based on progress ratio (0.0 to 1.0)
   // Now follows the road route instead of a straight line
   useEffect(() => {
+    if (!customerCoords) return;
+
     let roundedPos;
 
     if (routePointsRef.current.length > 2) {
@@ -346,11 +361,11 @@ export default function DeliveryMapModal({ order, onClose }) {
 
   if (!customerCoords || !initialRiderCoords || !serviceCheck) {
     return (
-      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-        <div className="bg-white w-full max-w-4xl rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col h-[600px] items-center justify-center">
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[1000] animate-fade-in">
+        <div className="bg-white w-full max-w-sm rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col p-8 items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-emerald-500 mb-4"></div>
           <h3 className="text-lg font-black text-slate-800">Locating Delivery Map...</h3>
-          <p className="text-sm text-slate-500 font-bold mt-1">Generating precise route from Geocoding API.</p>
+          <p className="text-sm text-slate-500 font-bold mt-1 text-center">Loading coordinates for live tracking.</p>
         </div>
       </div>
     );
@@ -380,7 +395,7 @@ export default function DeliveryMapModal({ order, onClose }) {
 
           <div className="flex items-center gap-3">
             {/* Serviceability Badge */}
-            {serviceCheck.isServiceable ? (
+            {serviceCheck && serviceCheck.isServiceable ? (
               <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 {serviceCheck.distanceKm} km (Within 5 km Zone)
@@ -388,7 +403,7 @@ export default function DeliveryMapModal({ order, onClose }) {
             ) : (
               <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-rose-400" />
-                {serviceCheck.distanceKm} km (Exceeds 5 km Limit!)
+                {serviceCheck ? serviceCheck.distanceKm : 0} km (Exceeds 5 km Limit!)
               </span>
             )}
 
@@ -476,7 +491,7 @@ export default function DeliveryMapModal({ order, onClose }) {
           <div ref={mapContainerRef} style={{ width: '100%', height: '440px', minHeight: '440px', zIndex: 1 }} className="w-full h-full" />
 
           {/* Warning Banner if Customer is Beyond 5 KM */}
-          {!serviceCheck.isServiceable && (
+          {serviceCheck && !serviceCheck.isServiceable && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-rose-600 text-white px-4 py-2 rounded-2xl shadow-xl border border-rose-400 text-xs font-bold flex items-center gap-2 animate-bounce">
               <AlertTriangle className="w-4 h-4 text-white" />
               <span>OUT OF SERVICE RADIUS: Customer address is {serviceCheck.distanceKm} km from Baharagora Store (Exceeds 5 km limit)</span>
@@ -504,7 +519,7 @@ export default function DeliveryMapModal({ order, onClose }) {
                 </a>
               </div>
               <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                📍 {order.customerAddress || 'Baharagora, Jharkhand'}
+                📍 {getSafeAddress(order)}
               </p>
               <p className="text-[10px] text-slate-400 mt-1">
                 Items: {order.items ? order.items.length : 1} products | Payment: {order.paymentMethod || 'COD'} (₹{order.totalAmount || 0})

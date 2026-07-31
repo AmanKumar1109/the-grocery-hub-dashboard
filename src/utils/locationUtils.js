@@ -2,10 +2,10 @@ import { loadGoogleMaps } from './googleMapsLoader';
 
 // Exact Baharagora Store Location (Dadu Complex, near Shitla Mandir, Baharagora, Jharkhand 832101)
 export const BAHARAGORA_HUB = {
-  lat: 22.2825,
-  lng: 86.7235,
-  name: 'The Grocery Hub Store',
-  address: 'Dadu Complex, Near Shitla Mandir, Baharagora, Jharkhand - 832101',
+  lat: 22.2760625,
+  lng: 86.7193125,
+  name: 'THE GROCERY HUB',
+  address: 'Dadu Complex, near Shitla Mandir, Baharagora, Jharkhand 832101',
   pincode: '832101'
 };
 
@@ -73,16 +73,29 @@ export function calculateETA(distanceKm, averageSpeedKmH = 25) {
  * Resolves coordinates for customer addresses using Google Maps Geocoder if exact lat/lng is missing.
  */
 export async function resolveOrderCoordinates(order) {
+  const isValidCoord = (val) => val !== null && val !== undefined && val !== '' && !isNaN(parseFloat(val));
+
   // 1. If order already has direct exact lat/lng (From "Use Current Location")
-  if (order.lat && order.lng) {
+  if (isValidCoord(order.lat) && isValidCoord(order.lng)) {
     return { lat: parseFloat(order.lat), lng: parseFloat(order.lng) };
   }
-  if (order.customerCoords && order.customerCoords.lat && order.customerCoords.lng) {
+  if (order.customerCoords && isValidCoord(order.customerCoords.lat) && isValidCoord(order.customerCoords.lng)) {
     return { lat: parseFloat(order.customerCoords.lat), lng: parseFloat(order.customerCoords.lng) };
   }
 
+  // Helper to extract string address
+  const getSafeAddrStr = (addr) => {
+    if (typeof addr === 'string') return addr;
+    if (typeof addr === 'object' && addr !== null) {
+      const parts = [addr.street, addr.city, addr.pincode].filter(Boolean);
+      if (parts.length > 0) return parts.join(', ');
+    }
+    return null;
+  };
+
   // 2. Geocode the address text using Google Maps
-  const addressString = order.address || order.customerAddress || order.deliveryAddress || 'Baharagora, Jharkhand';
+  const addressString = getSafeAddrStr(order.address) || getSafeAddrStr(order.customerAddress) || getSafeAddrStr(order.deliveryAddress) || 'Baharagora, Jharkhand';
+  
   
   try {
     const maps = await loadGoogleMaps();

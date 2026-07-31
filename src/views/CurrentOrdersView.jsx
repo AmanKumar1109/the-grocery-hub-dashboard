@@ -134,6 +134,23 @@ export default function CurrentOrdersView() {
     return order.status === filterStatus;
   });
 
+  const [orderDistances, setOrderDistances] = useState({});
+
+  useEffect(() => {
+    let active = true;
+    currentOrders.forEach(async (order) => {
+      const coords = await resolveOrderCoordinates(order);
+      const check = checkDeliveryServiceable(coords.lat, coords.lng);
+      if (active) {
+        setOrderDistances(prev => ({
+          ...prev,
+          [order.id]: check
+        }));
+      }
+    });
+    return () => { active = false; };
+  }, [orders]);
+
   useEffect(() => {
     if (containerRef.current) {
       gsap.fromTo(
@@ -213,229 +230,252 @@ export default function CurrentOrdersView() {
           </div>
         ) : (
           <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {filteredOrders.map((order) => (
-              <div
-                key={order.id}
-                className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all p-6 space-y-5 flex flex-col justify-between"
-              >
-                {/* Header info */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-emerald-600">{order.id}</span>
-                        {/* Order Placement Time Badge */}
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                          <Clock className="w-3 h-3 text-amber-600" />
-                          {typeof formatOrderDateTime(order) === 'object'
-                            ? `${formatOrderDateTime(order).exact} (${formatOrderDateTime(order).relative})`
-                            : formatOrderDateTime(order)}
+            {filteredOrders.map((order) => {
+              const check = orderDistances[order.id] || { isServiceable: true, distanceKm: '...' };
+              const selectedVal = pendingStatusMap[order.id] || order.status || 'Order Received';
+
+              const stages = [
+                { label: 'Received', value: 'Order Received' },
+                { label: 'Packing', value: 'Packing' },
+                { label: 'Out for Delivery', value: 'Out for Delivery' },
+                { label: 'Delivered', value: 'Delivered' }
+              ];
+
+              const currentStageIdx = stages.findIndex(s => s.value === selectedVal || (selectedVal === 'Pending' && s.value === 'Order Received') || (selectedVal === 'Preparing' && s.value === 'Packing'));
+
+              return (
+                <div
+                  key={order.id}
+                  className="bg-white rounded-3xl border border-slate-200/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_30px_-6px_rgba(0,0,0,0.1)] transition-all duration-300 p-6 flex flex-col justify-between space-y-6 relative overflow-hidden"
+                >
+                  {/* Top Bar: Order ID, Time & Action Buttons */}
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                      {/* Order Identity & Placement Time */}
+                      <div className="flex items-center gap-2.5">
+                        <span className="font-mono font-extrabold text-xs px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100/80">
+                          #{order.id}
+                        </span>
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                          <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                          <span>
+                            {typeof formatOrderDateTime(order) === 'object'
+                              ? `${formatOrderDateTime(order).exact} (${formatOrderDateTime(order).relative})`
+                              : formatOrderDateTime(order)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons Row */}
+                      <div className="flex items-center gap-1.5">
+                        {/* Live Map Button */}
+                        <button
+                          onClick={() => setTrackingOrder(order)}
+                          className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm hover:shadow transition-all cursor-pointer"
+                          title="Track Live Rider & Customer Map"
+                        >
+                          <Navigation className="w-3.5 h-3.5 text-emerald-400" /> Track Map
+                        </button>
+
+                        {/* Customer Details Button */}
+                        <button
+                          onClick={() => setViewDetailsOrder(order)}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                          title="View Customer Details"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Details
+                        </button>
+
+                        {/* Delay Delivery Button */}
+                        <button
+                          onClick={() => {
+                            setSelectedDelayReason(delayReasonsList[0]);
+                            setCustomDelayText('');
+                            setDelayingOrder(order);
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-semibold border border-amber-200/60 flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Delay Delivery"
+                        >
+                          <Clock className="w-3.5 h-3.5 text-amber-600" /> Delay
+                        </button>
+
+                        {/* Cancel Order Button */}
+                        <button
+                          onClick={() => {
+                            setSelectedReason(cancelReasonsList[0]);
+                            setCustomReasonText('');
+                            setCancellingOrder(order);
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold border border-rose-200/60 flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Cancel Order"
+                        >
+                          <Ban className="w-3.5 h-3.5 text-rose-500" /> Cancel
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Customer Info & Address Card */}
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-extrabold text-slate-900 text-lg tracking-tight">{order.customerName || 'Valued Customer'}</h3>
+                          <p className="flex items-center gap-2 text-xs font-medium text-slate-500 mt-0.5">
+                            <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>{order.customerPhone || 'N/A'}</span>
+                          </p>
+                        </div>
+
+                        {/* Zone Serviceability Badge */}
+                        {check.isServiceable ? (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/70 text-[11px] font-bold shrink-0 flex items-center gap-1">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> {check.distanceKm} km (Serviced)
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200/70 text-[11px] font-bold shrink-0 flex items-center gap-1 animate-pulse">
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> {check.distanceKm} km (Out of Zone!)
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="flex items-start gap-2 text-xs font-medium text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <span>
+                          {typeof order.address === 'string' ? order.address : (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : `${order.deliveryAddress?.street || ''}, ${order.deliveryAddress?.city || ''}`)}
+                        </span>
+                      </p>
+                    </div>
+
+                    {/* Ordered Grocery Items Section */}
+                    <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-100 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ordered Items</span>
+                        <span className="text-[11px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200/60">
+                          {order.items ? order.items.length : 0} Items
                         </span>
                       </div>
-                      <h3 className="font-extrabold text-slate-800 text-base mt-0.5">{order.customerName || 'Valued Customer'}</h3>
-                    </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {/* Track Live Map Button */}
-                      <button
-                        onClick={() => setTrackingOrder(order)}
-                        className="px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-                        title="Track Live Rider & Customer Map"
-                      >
-                        <Navigation className="w-3.5 h-3.5 text-emerald-400 animate-pulse" /> Track Map
-                      </button>
-
-                      {/* Customer Details Button */}
-                      <button
-                        onClick={() => setViewDetailsOrder(order)}
-                        className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-extrabold border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer"
-                        title="View Customer Details"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> Details
-                      </button>
-
-                      {/* Delay Delivery Button */}
-                      <button
-                        onClick={() => {
-                          setSelectedDelayReason(delayReasonsList[0]);
-                          setCustomDelayText('');
-                          setDelayingOrder(order);
-                        }}
-                        className="px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold border border-amber-200 flex items-center gap-1 transition-colors cursor-pointer"
-                        title="Delay Delivery"
-                      >
-                        <Clock className="w-3.5 h-3.5" /> Delay
-                      </button>
-
-                      {/* Cancel Order Button */}
-                      <button
-                        onClick={() => {
-                          setSelectedReason(cancelReasonsList[0]);
-                          setCustomReasonText('');
-                          setCancellingOrder(order);
-                        }}
-                        className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold border border-rose-200 flex items-center gap-1 transition-colors cursor-pointer"
-                        title="Cancel Order"
-                      >
-                        <Ban className="w-3.5 h-3.5" /> Cancel
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Address & Baharagora 5 KM Zone Check */}
-                  {(() => {
-                    const coords = resolveOrderCoordinates(order);
-                    const check = checkDeliveryServiceable(coords.lat, coords.lng);
-                    return (
-                      <div className="space-y-1.5 text-xs text-slate-600">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="flex items-center gap-2 text-slate-700 font-medium truncate">
-                            <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                            <span className="truncate">
-                              {typeof order.address === 'string' ? order.address : (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : `${order.deliveryAddress?.street || ''}, ${order.deliveryAddress?.city || ''}`)}
-                            </span>
-                          </p>
-                          {check.isServiceable ? (
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[10px] whitespace-nowrap shrink-0 flex items-center gap-1">
-                              <ShieldCheck className="w-3 h-3 text-emerald-600" /> {check.distanceKm} km (Serviced)
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-extrabold text-[10px] whitespace-nowrap shrink-0 flex items-center gap-1 animate-pulse">
-                              <AlertTriangle className="w-3 h-3 text-rose-600" /> {check.distanceKm} km (Exceeds 5km!)
-                            </span>
-                          )}
-                        </div>
-                        <p className="flex items-center gap-2 text-slate-500">
-                          <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          {order.customerPhone || 'N/A'}
-                        </p>
+                      <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                        {order.items && order.items.map((item, i) => {
+                          const qty = item.qty || item.quantity || 1;
+                          const price = item.price || 0;
+                          return (
+                            <div key={i} className="flex items-center justify-between text-xs text-slate-700 font-medium">
+                              <span className="truncate pr-2">
+                                <span className="font-bold text-slate-900 bg-slate-200/60 px-1.5 py-0.5 rounded mr-1.5 text-[10px]">{qty}x</span>
+                                {item.name}
+                              </span>
+                              <span className="font-bold text-slate-900 shrink-0">₹{(qty * price).toFixed(2)}</span>
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })()}
-                </div>
 
-                {/* Ordered Grocery Items List */}
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ordered Items</p>
-                  <div className="space-y-1">
-                    {order.items && order.items.map((item, i) => {
-                      const qty = item.qty || item.quantity || 1;
-                      const price = item.price || 0;
-                      return (
-                        <div key={i} className="flex justify-between text-xs text-slate-700 font-medium">
-                          <span>{qty}x {item.name}</span>
-                          <span className="font-bold text-slate-900">₹{(qty * price).toFixed(2)}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="pt-2 border-t border-slate-200 flex justify-between text-xs font-bold text-slate-900">
-                    <span>Total Amount</span>
-                    <span className="text-emerald-700 text-sm">₹{(order.totalAmount || 0).toFixed(2)}</span>
-                  </div>
-                </div>
-
-                {/* Delivery Partner Assignment & Status Update Section */}
-                <div className="space-y-4 pt-2 border-t border-slate-100">
-                  {/* Delivery Partner Dropdown Selector */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <Truck className="w-4 h-4 text-emerald-600" /> Assign Delivery Partner
-                      </span>
-                      {order.assignedPartnerId && (
-                        <span className="text-[11px] font-semibold text-emerald-600">Assigned</span>
-                      )}
-                    </label>
-
-                    <select
-                      value={order.assignedPartnerId || ''}
-                      onChange={(e) => assignDeliveryPartner(order.id, e.target.value)}
-                      className={`w-full text-xs font-semibold rounded-xl px-3 py-2 border transition-all ${
-                        order.assignedPartnerId
-                          ? 'bg-emerald-50/60 border-emerald-300 text-emerald-800'
-                          : 'bg-amber-50 border-amber-300 text-amber-800'
-                      }`}
-                    >
-                      <option value="">-- Select Delivery Person --</option>
-                      {staff.map(person => (
-                        <option key={person.id} value={person.id}>
-                          {person.name} ({person.vehicle}) - Status: {person.status}
-                        </option>
-                      ))}
-                    </select>
+                      <div className="pt-2 border-t border-slate-200/70 flex justify-between items-center text-xs font-bold text-slate-900">
+                        <span className="text-slate-500">Total Payable</span>
+                        <span className="text-emerald-700 text-base font-extrabold">₹{(order.totalAmount || 0).toFixed(2)}</span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Order Progress Status Controls */}
-                  <div className="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <RefreshCw className="w-3.5 h-3.5 text-emerald-600" /> Order Tracking Stage
+                  {/* Bottom Controls: Assign Partner & Progress Pipeline */}
+                  <div className="space-y-4 pt-2 border-t border-slate-100">
+                    {/* Delivery Partner Selector */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Truck className="w-4 h-4 text-emerald-600" /> Assign Delivery Partner
+                        </span>
+                        {order.assignedPartnerId && (
+                          <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Assigned</span>
+                        )}
                       </label>
-                      <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        Current: {order.status || 'Order Received'}
-                      </span>
+
+                      <select
+                        value={order.assignedPartnerId || ''}
+                        onChange={(e) => assignDeliveryPartner(order.id, e.target.value)}
+                        className={`w-full text-xs font-semibold rounded-xl px-3.5 py-2.5 border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${
+                          order.assignedPartnerId
+                            ? 'bg-emerald-50/40 border-emerald-300 text-emerald-900'
+                            : 'bg-white border-slate-200 text-slate-700 shadow-2xs'
+                        }`}
+                      >
+                        <option value="">-- Select Delivery Person --</option>
+                        {staff.map(person => (
+                          <option key={person.id} value={person.id}>
+                            {person.name} ({person.vehicle}) - Status: {person.status}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    {/* Status Step Selection Buttons */}
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {[
-                        { label: 'Received', value: 'Order Received' },
-                        { label: 'Packing', value: 'Packing' },
-                        { label: 'Out for Delivery', value: 'Out for Delivery' },
-                        { label: 'Delivered', value: 'Delivered' }
-                      ].map((st) => {
-                        const selectedVal = pendingStatusMap[order.id] || order.status || 'Order Received';
-                        const isSelected = selectedVal === st.value || (selectedVal === 'Pending' && st.value === 'Order Received') || (selectedVal === 'Preparing' && st.value === 'Packing');
+                    {/* Interactive Order Pipeline Tracker */}
+                    <div className="space-y-2.5 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                          <RefreshCw className="w-3.5 h-3.5 text-emerald-600" /> Tracking Progress Stage
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-200/80">
+                          {order.status || 'Order Received'}
+                        </span>
+                      </div>
 
-                        return (
-                          <button
-                            key={st.value}
-                            type="button"
-                            onClick={() => setPendingStatusMap(prev => ({ ...prev, [order.id]: st.value }))}
-                            className={`py-2 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer border ${
-                              isSelected
-                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                            }`}
-                          >
-                            {st.label}
-                          </button>
-                        );
-                      })}
+                      {/* Step Progress Pills */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        {stages.map((st, idx) => {
+                          const isSelected = selectedVal === st.value || (selectedVal === 'Pending' && st.value === 'Order Received') || (selectedVal === 'Preparing' && st.value === 'Packing');
+                          const isPast = idx <= (currentStageIdx >= 0 ? currentStageIdx : 0);
+
+                          return (
+                            <button
+                              key={st.value}
+                              type="button"
+                              onClick={() => setPendingStatusMap(prev => ({ ...prev, [order.id]: st.value }))}
+                              className={`py-2 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer text-center truncate border ${
+                                isSelected
+                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs scale-[1.02]'
+                                  : isPast
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200/60'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              {st.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Update Live Status Action Button */}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const targetStatus = pendingStatusMap[order.id] || order.status || 'Order Received';
+                          await updateOrderStatus(order.id, targetStatus);
+                          showToast(`Order #${order.id} status updated to ${targetStatus}!`);
+                        }}
+                        className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer mt-1"
+                      >
+                        <CheckCircle2 className="w-4 h-4 stroke-[2.5]" /> Update & Sync Status Live
+                      </button>
                     </div>
 
-                    {/* Roll / Update Status Button */}
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const targetStatus = pendingStatusMap[order.id] || order.status || 'Order Received';
-                        await updateOrderStatus(order.id, targetStatus);
-                        showToast(`Order #${order.id} status updated to ${targetStatus}!`);
-                      }}
-                      className="w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 text-xs font-black rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <CheckCircle2 className="w-4 h-4 stroke-[2.5]" /> Update & Roll Status Live
-                    </button>
-                  </div>
-
-                  {/* PRINT BILL / THERMAL RECEIPT BUTTON UNDER EVERY ORDER */}
-                  <div className="pt-2">
-                    <button
-                      onClick={() => setPrintingOrder(order)}
-                      className={`w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs ${
-                        order.isBillPrinted
-                          ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
-                          : 'bg-slate-900 hover:bg-slate-800 text-white'
-                      }`}
-                    >
-                      <Printer className="w-4 h-4" />
-                      <span>{order.isBillPrinted ? 'Reprint Bill / Thermal Receipt' : 'Print Bill / Thermal Receipt'}</span>
-                    </button>
+                    {/* Print Bill / Thermal Receipt Button */}
+                    <div>
+                      <button
+                        onClick={() => setPrintingOrder(order)}
+                        className={`w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          order.isBillPrinted
+                            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 shadow-2xs'
+                            : 'bg-slate-900 hover:bg-slate-800 text-white shadow-xs'
+                        }`}
+                      >
+                        <Printer className="w-4 h-4" />
+                        <span>{order.isBillPrinted ? 'Reprint Bill / Thermal Receipt' : 'Print Bill / Thermal Receipt'}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
