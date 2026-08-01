@@ -144,11 +144,18 @@ export default function DeliveryMapModal({ order, onClose }) {
     const isServiceable = serviceCheck.isServiceable;
     const geofenceCircle = L.circle([BAHARAGORA_HUB.lat, BAHARAGORA_HUB.lng], {
       radius: MAX_DELIVERY_RADIUS_KM * 1000, // 5000m
-      color: isServiceable ? '#10b981' : '#f43f5e',
+      color: isServiceable ? '#059669' : '#e11d48',
       fillColor: isServiceable ? '#10b981' : '#f43f5e',
-      fillOpacity: 0.08,
-      weight: 2,
-      dashArray: '8, 8'
+      fillOpacity: isServiceable ? 0.06 : 0.15,
+      weight: 4
+    }).addTo(map);
+
+    L.circle([BAHARAGORA_HUB.lat, BAHARAGORA_HUB.lng], {
+      radius: MAX_DELIVERY_RADIUS_KM * 1000,
+      color: '#ef4444',
+      fillOpacity: 0,
+      weight: 1.5,
+      dashArray: '4, 8'
     }).addTo(map);
 
     geofenceCircle.bindPopup(`
@@ -190,10 +197,6 @@ export default function DeliveryMapModal({ order, onClose }) {
     const storeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M10 12h4"/></svg>`;
     const storeIcon = createCustomIcon(storeSvg, '#059669');
 
-    // Rider Scooter Marker Icon
-    const riderSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.5a2.5 2.5 0 0 0-2.5-2.5H14"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>`;
-    const riderIcon = createCustomIcon(riderSvg, '#f59e0b', '#78350f');
-
     // Customer Home Marker Icon
     const customerSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`;
     const customerIcon = createCustomIcon(customerSvg, serviceCheck.isServiceable ? '#2563eb' : '#e11d48');
@@ -219,23 +222,10 @@ export default function DeliveryMapModal({ order, onClose }) {
       </div>
     `);
 
-    // 4. Add Delivery Rider Marker
-    const riderMarker = L.marker([initialRiderCoords.lat, initialRiderCoords.lng], { icon: riderIcon }).addTo(map);
-    riderMarkerRef.current = riderMarker;
-
-    const riderName = order.deliveryPartnerName || order.staffName || 'Delivery Partner';
-    riderMarker.bindPopup(`
-      <div style="font-family: sans-serif; padding: 4px;">
-        <strong style="color: #d97706; font-size: 13px;">🛵 Delivery Partner: ${riderName}</strong>
-        <p style="margin: 4px 0 0; font-size: 11px; color: #475569;">Status: Delivery On The Way</p>
-      </div>
-    `);
-
     // 5. Draw initial straight line placeholder while road route loads
     const initialPolyline = L.polyline(
       [
         [BAHARAGORA_HUB.lat, BAHARAGORA_HUB.lng],
-        [initialRiderCoords.lat, initialRiderCoords.lng],
         [customerCoords.lat, customerCoords.lng]
       ],
       {
@@ -288,11 +278,10 @@ export default function DeliveryMapModal({ order, onClose }) {
       }
     });
 
-    // Fit Map Bounds to fit all 3 points nicely
+    // Fit Map Bounds to fit both points nicely
     const bounds = L.latLngBounds([
       [BAHARAGORA_HUB.lat, BAHARAGORA_HUB.lng],
-      [customerCoords.lat, customerCoords.lng],
-      [initialRiderCoords.lat, initialRiderCoords.lng]
+      [customerCoords.lat, customerCoords.lng]
     ]);
     map.fitBounds(bounds, { padding: [60, 60] });
 
