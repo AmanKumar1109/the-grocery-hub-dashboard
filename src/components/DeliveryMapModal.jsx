@@ -101,7 +101,15 @@ export default function DeliveryMapModal({ order, onClose }) {
     customerCoords.lng
   ) : 0;
 
-  const currentETA = roadDuration ? `~${roadDuration} mins` : calculateETA(distanceToCustomer);
+  const hubToCustomerStraightLine = customerCoords ? calculateDistance(
+    BAHARAGORA_HUB.lat,
+    BAHARAGORA_HUB.lng,
+    customerCoords.lat,
+    customerCoords.lng
+  ) : 0;
+
+  const currentETA = roadDuration ? `~${roadDuration} mins` : calculateETA(hubToCustomerStraightLine);
+  const displayDistance = roadDistance !== null ? roadDistance.toFixed(2) : hubToCustomerStraightLine.toFixed(2);
 
   // Initialize Leaflet Map
   useEffect(() => {
@@ -398,12 +406,12 @@ export default function DeliveryMapModal({ order, onClose }) {
             {serviceCheck && serviceCheck.isServiceable ? (
               <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                {serviceCheck.distanceKm} km (Within 5 km Zone)
+                {roadDistance !== null ? roadDistance : serviceCheck.distanceKm} km (Within 5 km Zone)
               </span>
             ) : (
               <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-rose-400" />
-                {serviceCheck ? serviceCheck.distanceKm : 0} km (Exceeds 5 km Limit!)
+                {roadDistance !== null ? roadDistance : (serviceCheck ? serviceCheck.distanceKm : 0)} km (Exceeds 5 km Limit!)
               </span>
             )}
 
@@ -432,8 +440,8 @@ export default function DeliveryMapModal({ order, onClose }) {
             <div className="flex items-center gap-2">
               <Navigation className="w-4 h-4 text-emerald-400" />
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-semibold block">Remaining Distance</span>
-                <span className="text-xs font-extrabold text-emerald-400">{distanceToCustomer.toFixed(2)} km</span>
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">Total Road Distance</span>
+                <span className="text-xs font-extrabold text-emerald-400">{displayDistance} km</span>
               </div>
             </div>
 

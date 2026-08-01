@@ -26,7 +26,8 @@ import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
 import ThermalReceiptModal from '../components/ThermalReceiptModal';
 import DeliveryMapModal from '../components/DeliveryMapModal';
-import { checkDeliveryServiceable, resolveOrderCoordinates } from '../utils/locationUtils';
+import { checkDeliveryServiceable, resolveOrderCoordinates, BAHARAGORA_HUB } from '../utils/locationUtils';
+import { fetchRoadRoute } from '../utils/routeService';
 import gsap from 'gsap';
 
 export default function CurrentOrdersView() {
@@ -136,18 +137,54 @@ export default function CurrentOrdersView() {
 
   const [orderDistances, setOrderDistances] = useState({});
 
+  const fetchedRoadOrderIdsRef = useRef(new Set());
+
   useEffect(() => {
     let active = true;
-    currentOrders.forEach(async (order) => {
-      const coords = await resolveOrderCoordinates(order);
-      const check = checkDeliveryServiceable(coords.lat, coords.lng);
-      if (active) {
-        setOrderDistances(prev => ({
-          ...prev,
-          [order.id]: check
-        }));
+    
+    const fetchDistances = async () => {
+      for (const order of currentOrders) {
+        if (!active) break;
+        
+        const coords = await resolveOrderCoordinates(order);
+        const check = checkDeliveryServiceable(coords.lat, coords.lng);
+        
+        // Skip API call if we already successfully fetched road distance
+        if (fetchedRoadOrderIdsRef.current.has(order.id)) {
+          continue;
+        }
+        
+        // Set straight-line fallback first while loading
+        if (active) {
+          setOrderDistances(prev => ({
+            ...prev,
+            [order.id]: prev[order.id] || { ...check, roadDistanceKm: check.distanceKm, isRoad: false }
+          }));
+        }
+        
+        try {
+          // Small delay to prevent Google Maps Directions API rate limits
+          await new Promise(r => setTimeout(r, 350));
+          const roadResult = await fetchRoadRoute(BAHARAGORA_HUB, coords);
+          
+          if (active && roadResult.success && roadResult.totalDistanceKm > 0) {
+            fetchedRoadOrderIdsRef.current.add(order.id);
+            setOrderDistances(prev => ({
+              ...prev,
+              [order.id]: {
+                ...check,
+                roadDistanceKm: roadResult.totalDistanceKm,
+                isRoad: true
+              }
+            }));
+          }
+        } catch (err) {
+          // Fallback remains
+        }
       }
-    });
+    };
+    
+    fetchDistances();
     return () => { active = false; };
   }, [orders]);
 
@@ -326,15 +363,17 @@ export default function CurrentOrdersView() {
                         </div>
 
                         {/* Zone Serviceability Badge */}
-                        {check.isServiceable ? (
-                          <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/70 text-[11px] font-bold shrink-0 flex items-center gap-1">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> {check.distanceKm} km (Serviced)
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200/70 text-[11px] font-bold shrink-0 flex items-center gap-1 animate-pulse">
-                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> {check.distanceKm} km (Out of Zone!)
-                          </span>
-                        )}
+                        <span className={`px-2.5 py-1 rounded-full border text-[11px] font-bold shrink-0 flex items-center gap-1 ${check.isServiceable ? 'bg-emerald-50 text-emerald-700 border-emerald-200/70' : 'bg-rose-50 text-rose-700 border-rose-200/70 animate-pulse'}`}>
+                          {check.isServiceable ? (
+                            <span className="flex items-center gap-1">
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> {check.roadDistanceKm ?? check.distanceKm} km (Road Distance)
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-rose-600">
+                              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> {check.roadDistanceKm ?? check.distanceKm} km (Out of Zone!)
+                            </span>
+                          )}
+                        </span>
                       </div>
 
                       <p className="flex items-start gap-2 text-xs font-medium text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-2xl border border-slate-100">

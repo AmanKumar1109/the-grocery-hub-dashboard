@@ -82,6 +82,13 @@ export async function resolveOrderCoordinates(order) {
   if (order.customerCoords && isValidCoord(order.customerCoords.lat) && isValidCoord(order.customerCoords.lng)) {
     return { lat: parseFloat(order.customerCoords.lat), lng: parseFloat(order.customerCoords.lng) };
   }
+  if (order.deliveryAddressObject && isValidCoord(order.deliveryAddressObject.lat) && isValidCoord(order.deliveryAddressObject.lng)) {
+    return { lat: parseFloat(order.deliveryAddressObject.lat), lng: parseFloat(order.deliveryAddressObject.lng) };
+  }
+  if (order.deliveryAddress && isValidCoord(order.deliveryAddress.lat) && isValidCoord(order.deliveryAddress.lng)) {
+    return { lat: parseFloat(order.deliveryAddress.lat), lng: parseFloat(order.deliveryAddress.lng) };
+  }
+
 
   // Helper to extract string address
   const getSafeAddrStr = (addr) => {
