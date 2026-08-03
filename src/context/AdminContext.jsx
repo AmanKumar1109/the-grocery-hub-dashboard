@@ -8,11 +8,9 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  deleteDoc,
   getDocs,
   writeBatch,
-  arrayUnion,
-  setDoc
+  arrayUnion
 } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
