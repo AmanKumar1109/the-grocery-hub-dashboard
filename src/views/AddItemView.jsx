@@ -22,7 +22,8 @@ export default function AddItemView() {
     inStock: true,
     isTrending: false,
     isBogo: false,
-    image: ''
+    image: '',
+    unit: ''
   });
 
   // Calculate off percentage live
@@ -147,6 +148,18 @@ export default function AddItemView() {
                   placeholder="e.g. Fresh Organic Tomatoes"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Unit/Quantity */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-2">Unit / Quantity (e.g., 1 ltr, 500g)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 1 ltr, 500g, 1 kg"
+                  value={formData.unit}
+                  onChange={e => setFormData({ ...formData, unit: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
               </div>

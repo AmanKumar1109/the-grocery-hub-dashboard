@@ -51,7 +51,8 @@ export default function ExcelProductImporter() {
   const handleDownloadTemplate = () => {
     const sampleData = [
       {
-        "Product Name": "Fresh Organic Tomatoes (1kg)",
+        "Product Name": "Fresh Organic Tomatoes",
+        "Unit": "1 kg",
         "Category": "Fresh Vegetables",
         "Subcategory": "Organic",
         "MRP": 60,
@@ -60,7 +61,8 @@ export default function ExcelProductImporter() {
         "In Stock": "Yes"
       },
       {
-        "Product Name": "Amul Taaza Toned Milk (1L)",
+        "Product Name": "Amul Taaza Toned Milk",
+        "Unit": "1 L",
         "Category": "Dairy & Eggs",
         "Subcategory": "Milk",
         "MRP": 54,
@@ -127,6 +129,7 @@ export default function ExcelProductImporter() {
           const sellingPrice = findVal(['mrp', 'mrp (₹)', 'mrp (rs)', 'selling price', 'original price', 'retail price', 'retail_price']);
           const price = findVal(['our price', 'price', 'our price (₹)', 'our price (rs)', 'sale price', 'offer price', 'cost']);
           const image = findVal(['image url', 'image', 'img', 'photo', 'picture', 'image_url']);
+          const unit = findVal(['unit', 'quantity', 'weight', 'size', 'qty', 'volume']);
           const stockVal = findVal(['in stock', 'stock', 'available']);
 
           const inStock = stockVal ? !['no', 'false', '0', 'out of stock'].includes(String(stockVal).toLowerCase().trim()) : true;
@@ -139,6 +142,7 @@ export default function ExcelProductImporter() {
             sellingPrice: sellingPrice !== '' ? String(sellingPrice) : '',
             price: price !== '' ? String(price) : (sellingPrice !== '' ? String(sellingPrice) : ''),
             image: String(image || '').trim(),
+            unit: String(unit || '').trim(),
             inStock: inStock
           };
         });
@@ -182,6 +186,7 @@ export default function ExcelProductImporter() {
       sellingPrice: '',
       price: '',
       image: '',
+      unit: '',
       inStock: true
     };
     setBatchItems(prev => [...prev, newRow]);
@@ -235,6 +240,7 @@ export default function ExcelProductImporter() {
           sellingPrice: item.sellingPrice || item.price || '0',
           price: item.price || item.sellingPrice || '0',
           image: finalImage,
+          unit: item.unit || '',
           inStock: item.inStock !== false,
           isTrending: false,
           isBogo: false,
@@ -387,6 +393,7 @@ export default function ExcelProductImporter() {
                 <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                   <th className="py-3 px-3 w-12 text-center">#</th>
                   <th className="py-3 px-4 min-w-[200px]">Product Name *</th>
+                  <th className="py-3 px-4 min-w-[120px]">Unit/Qty</th>
                   <th className="py-3 px-4 min-w-[150px]">Category</th>
                   <th className="py-3 px-4 min-w-[150px]">Subcategory</th>
                   <th className="py-3 px-3 min-w-[110px]">MRP (₹)</th>
@@ -418,6 +425,17 @@ export default function ExcelProductImporter() {
                           onChange={(e) => updateBatchItem(item.id, 'name', e.target.value)}
                           className={`w-full px-3 py-1.5 rounded-lg border text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none ${!item.name.trim() ? 'border-rose-300 bg-rose-50/50' : 'border-slate-200 bg-white'
                             }`}
+                        />
+                      </td>
+
+                      {/* Unit */}
+                      <td className="py-3 px-4">
+                        <input
+                          type="text"
+                          value={item.unit || ''}
+                          placeholder="e.g. 1 ltr"
+                          onChange={(e) => updateBatchItem(item.id, 'unit', e.target.value)}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium focus:ring-2 focus:ring-emerald-500"
                         />
                       </td>
 
