@@ -8,8 +8,9 @@ import { useAdmin } from '../context/AdminContext';
 const SETTINGS_DOC_REF = doc(db, 'settings', 'global');
 
 export default function StoreSettingsView() {
-  const { items } = useAdmin();
+  const { items, categories, categoryDocs } = useAdmin();
   const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [focusedBannerInput, setFocusedBannerInput] = useState(null);
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -334,6 +335,41 @@ export default function StoreSettingsView() {
   const searchMatchingProducts = productSearchQuery.trim()
     ? (items || []).filter(p => p.name.toLowerCase().includes(productSearchQuery.toLowerCase()))
     : [];
+
+  const handlePromoBannerChange = (index, field, value) => {
+    setSettings(prev => {
+      const defaultBanners = [
+        { label: 'Daily Harvest', title: 'Organic Summer \\n Fruits Festival', subtitle: 'Flat 30% OFF on all fresh fruit baskets', buttonText: 'Shop Fruits', link: '#shop' },
+        { label: 'Best Value Box', title: 'Organic Farm \\n Veggie Combo Box', subtitle: 'Hand-picked 7 essential veggies @ ₹199', buttonText: 'Claim Offer', link: '#shop' },
+        { label: 'Instant Express', title: 'Superfast 15 Mins \\n Doorstep Delivery', subtitle: 'Zero delivery fee on orders over ₹199', buttonText: 'Order Now', link: '#shop' }
+      ];
+      const banners = prev.promoBanners ? [...prev.promoBanners] : defaultBanners;
+      banners[index] = { ...banners[index], [field]: value };
+      return { ...prev, promoBanners: banners };
+    });
+  };
+
+  const getLinkMode = (url) => {
+    if (!url) return 'custom';
+    if (url === '/catalog') return 'all';
+    if (url.startsWith('/catalog?search=')) {
+      const term = decodeURIComponent(url.split('=')[1] || '');
+      if (categories.includes(term)) return 'category';
+      
+      const allSubcats = (categoryDocs || []).flatMap(c => c.subcategories || []);
+      if (allSubcats.includes(term)) return 'subcategory';
+
+      return 'search'; 
+    }
+    return 'custom';
+  };
+
+  const getLinkTerm = (url) => {
+    if (url?.startsWith('/catalog?search=')) {
+      return decodeURIComponent(url.split('=')[1] || '');
+    }
+    return '';
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -697,6 +733,171 @@ export default function StoreSettingsView() {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Promo Banners Settings */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6 md:col-span-2">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
+               <Megaphone className="w-5 h-5 text-emerald-500" />
+               <h2 className="text-base font-bold text-slate-800">Promo Banners Settings (Homepage)</h2>
+            </div>
+            
+            <div className="space-y-8">
+              {[0, 1, 2].map((bannerIndex) => {
+                const defaultBanners = [
+                  { label: 'Daily Harvest', title: 'Organic Summer \\n Fruits Festival', subtitle: 'Flat 30% OFF on all fresh fruit baskets', buttonText: 'Shop Fruits', link: '#shop' },
+                  { label: 'Best Value Box', title: 'Organic Farm \\n Veggie Combo Box', subtitle: 'Hand-picked 7 essential veggies @ ₹199', buttonText: 'Claim Offer', link: '#shop' },
+                  { label: 'Instant Express', title: 'Superfast 15 Mins \\n Doorstep Delivery', subtitle: 'Zero delivery fee on orders over ₹199', buttonText: 'Order Now', link: '#shop' }
+                ];
+                const banner = (settings.promoBanners && settings.promoBanners[bannerIndex]) ? settings.promoBanners[bannerIndex] : defaultBanners[bannerIndex];
+                
+                const linkMode = getLinkMode(banner.link);
+                const linkTerm = getLinkTerm(banner.link);
+
+                return (
+                  <div key={bannerIndex} className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                    <h3 className="font-bold text-sm text-emerald-700 mb-4 pb-2 border-b border-emerald-100">Banner {bannerIndex + 1}</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">Top Label (e.g. Daily Harvest)</label>
+                        <input
+                          type="text"
+                          value={banner.label || ''}
+                          onChange={(e) => handlePromoBannerChange(bannerIndex, 'label', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm focus:border-emerald-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">Title (Use \n for next line)</label>
+                        <input
+                          type="text"
+                          value={banner.title || ''}
+                          onChange={(e) => handlePromoBannerChange(bannerIndex, 'title', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm focus:border-emerald-500 outline-none"
+                        />
+                      </div>
+                      <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="sm:col-span-1">
+                          <label className="block text-xs font-bold text-slate-600 mb-1.5">Subtitle</label>
+                          <input
+                            type="text"
+                            value={banner.subtitle || ''}
+                            onChange={(e) => handlePromoBannerChange(bannerIndex, 'subtitle', e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm focus:border-emerald-500 outline-none"
+                          />
+                        </div>
+                        <div className="sm:col-span-1">
+                          <label className="block text-xs font-bold text-slate-600 mb-1.5">Button Text</label>
+                          <input
+                            type="text"
+                            value={banner.buttonText || ''}
+                            onChange={(e) => handlePromoBannerChange(bannerIndex, 'buttonText', e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm focus:border-emerald-500 outline-none"
+                          />
+                        </div>
+                        <div className="sm:col-span-1">
+                          <label className="block text-xs font-bold text-slate-600 mb-1.5">Where to Link?</label>
+                          <div className="space-y-2">
+                            <select
+                              value={linkMode}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === 'all') handlePromoBannerChange(bannerIndex, 'link', '/catalog');
+                                else if (val === 'category') handlePromoBannerChange(bannerIndex, 'link', `/catalog?search=${encodeURIComponent(categories[0]||'')}`);
+                                else if (val === 'subcategory') {
+                                  const allSubcats = (categoryDocs || []).flatMap(c => c.subcategories || []);
+                                  handlePromoBannerChange(bannerIndex, 'link', `/catalog?search=${encodeURIComponent(allSubcats[0]||'')}`);
+                                }
+                                else if (val === 'search') handlePromoBannerChange(bannerIndex, 'link', '/catalog?search=');
+                                else handlePromoBannerChange(bannerIndex, 'link', '');
+                              }}
+                              className="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:border-emerald-500 outline-none"
+                            >
+                              <option value="all">🛍️ All Products</option>
+                              <option value="category">📁 Specific Category</option>
+                              <option value="subcategory">📂 Specific Subcategory</option>
+                              <option value="search">🔍 Specific Product</option>
+                              <option value="custom">🔗 Custom URL</option>
+                            </select>
+
+                            {linkMode === 'category' && (
+                              <select
+                                value={linkTerm}
+                                onChange={(e) => handlePromoBannerChange(bannerIndex, 'link', `/catalog?search=${encodeURIComponent(e.target.value)}`)}
+                                className="w-full px-3 py-2 rounded-lg bg-white border border-emerald-200 text-sm focus:border-emerald-500 outline-none shadow-sm"
+                              >
+                                {categories.map((cat, i) => (
+                                  <option key={i} value={cat}>{cat}</option>
+                                ))}
+                              </select>
+                            )}
+
+                            {linkMode === 'subcategory' && (
+                              <select
+                                value={linkTerm}
+                                onChange={(e) => handlePromoBannerChange(bannerIndex, 'link', `/catalog?search=${encodeURIComponent(e.target.value)}`)}
+                                className="w-full px-3 py-2 rounded-lg bg-white border border-emerald-200 text-sm focus:border-emerald-500 outline-none shadow-sm"
+                              >
+                                <option value="">-- Select Subcategory --</option>
+                                {(categoryDocs || []).map(cat => (
+                                  <optgroup key={cat.name} label={cat.name}>
+                                    {(cat.subcategories || []).map(sub => (
+                                      <option key={sub} value={sub}>{sub}</option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                            )}
+
+                            {linkMode === 'search' && (
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Paneer or Amul Butter"
+                                  value={linkTerm}
+                                  onChange={(e) => handlePromoBannerChange(bannerIndex, 'link', `/catalog?search=${encodeURIComponent(e.target.value)}`)}
+                                  onFocus={() => setFocusedBannerInput(bannerIndex)}
+                                  onBlur={() => setTimeout(() => setFocusedBannerInput(null), 200)}
+                                  className="w-full px-3 py-2 rounded-lg bg-white border border-emerald-200 text-sm focus:border-emerald-500 outline-none shadow-sm"
+                                />
+                                {focusedBannerInput === bannerIndex && linkTerm.trim() && (
+                                  <div className="absolute z-20 w-full mt-1 bg-white rounded-xl shadow-xl border border-slate-100 max-h-48 overflow-y-auto">
+                                    {(items || []).filter(p => p.name.toLowerCase().includes(linkTerm.toLowerCase())).slice(0, 10).map(prod => (
+                                      <button
+                                        key={prod.id}
+                                        type="button"
+                                        onClick={() => handlePromoBannerChange(bannerIndex, 'link', `/catalog?search=${encodeURIComponent(prod.name)}`)}
+                                        className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 cursor-pointer"
+                                      >
+                                        <img src={prod.image || prod.images?.[0] || 'https://via.placeholder.com/40'} alt={prod.name} className="w-6 h-6 rounded object-cover bg-slate-100" />
+                                        <span className="text-xs font-bold text-slate-800 line-clamp-1">{prod.name}</span>
+                                      </button>
+                                    ))}
+                                    {(items || []).filter(p => p.name.toLowerCase().includes(linkTerm.toLowerCase())).length === 0 && (
+                                      <div className="p-2 text-[10px] text-slate-500 text-center">No exact products found. Will search as text.</div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {linkMode === 'custom' && (
+                              <input
+                                type="text"
+                                placeholder="e.g. /about-us or https://..."
+                                value={banner.link || ''}
+                                onChange={(e) => handlePromoBannerChange(bannerIndex, 'link', e.target.value)}
+                                className="w-full px-3 py-2 rounded-lg bg-white border border-emerald-200 text-sm focus:border-emerald-500 outline-none shadow-sm"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
