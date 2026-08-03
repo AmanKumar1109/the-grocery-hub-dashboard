@@ -28,13 +28,15 @@ import {
   Loader2,
   FolderSync,
   MoveRight,
-  PenLine
+  PenLine,
+  DownloadCloud
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
 import ImageUploadInput from '../components/ImageUploadInput';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
+import * as XLSX from 'xlsx';
 
 function SortableItemWrapper({ id, children }) {
   const {
@@ -260,6 +262,30 @@ export default function ItemsView() {
     );
   };
 
+  const handleExportToExcel = () => {
+    const dataToExport = items.map(item => ({
+      ID: item.id,
+      Name: item.name,
+      Category: item.category || 'General',
+      Subcategory: item.subcategory || 'None',
+      MRP: item.sellingPrice || 0,
+      SellingPrice: item.price || 0,
+      Discount_Percentage: item.offPercentage || 0,
+      Stock_Status: item.inStock !== false ? 'In Stock' : 'Out of Stock',
+      Trending: item.isTrending ? 'Yes' : 'No',
+      Buy1Get1: item.isBogo ? 'Yes' : 'No',
+      Visibility: item.isVisible !== false ? 'Visible' : 'Hidden',
+      RecentBuyers: item.recentBuyers || 0,
+      Rating: item.rating || 5.0,
+      ImageURL: item.image || ''
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "GroceryProducts");
+    XLSX.writeFile(workbook, "Grocery_Products_Catalog.xlsx");
+  };
+
   return (
     <div className="flex-1 min-h-screen bg-slate-50/50 flex flex-col">
       <Header
@@ -284,6 +310,13 @@ export default function ItemsView() {
               className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-2 transition-colors cursor-pointer"
             >
               <FolderPlus className="w-4 h-4 text-emerald-600" /> Manage Categories
+            </button>
+
+            <button
+              onClick={handleExportToExcel}
+              className="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs flex items-center gap-2 transition-colors cursor-pointer"
+            >
+              <DownloadCloud className="w-4 h-4" /> Export to Excel
             </button>
 
             <Link
