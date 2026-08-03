@@ -7,7 +7,7 @@ import ExcelProductImporter from '../components/ExcelProductImporter';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function AddItemView() {
-  const { categories, addCategory, addItem } = useAdmin();
+  const { categories, categoryDocs, addCategory, addItem } = useAdmin();
   const navigate = useNavigate();
 
   const [creationMode, setCreationMode] = useState('single'); // 'single' | 'excel'
@@ -15,6 +15,7 @@ export default function AddItemView() {
   const [formData, setFormData] = useState({
     name: '',
     category: '',
+    subcategory: '',
     price: '',
     sellingPrice: '',
     recentBuyers: '',
@@ -167,12 +168,28 @@ export default function AddItemView() {
                 </div>
                 <select
                   value={formData.category}
-                  onChange={e => setFormData({ ...formData, category: e.target.value })}
+                  onChange={e => setFormData({ ...formData, category: e.target.value, subcategory: '' })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 >
                   <option value="">General / None (No Category)</option>
                   {categories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Subcategory Dropdown */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-2">Subcategory (Optional)</label>
+                <select
+                  value={formData.subcategory}
+                  onChange={e => setFormData({ ...formData, subcategory: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  disabled={!formData.category}
+                >
+                  <option value="">None</option>
+                  {categoryDocs.find(c => c.name === formData.category)?.subcategories?.map(sub => (
+                    <option key={sub} value={sub}>{sub}</option>
                   ))}
                 </select>
               </div>

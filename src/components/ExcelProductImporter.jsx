@@ -21,7 +21,7 @@ import ImageUploadInput from './ImageUploadInput';
 import { useNavigate } from 'react-router-dom';
 
 export default function ExcelProductImporter() {
-  const { categories, addItem } = useAdmin();
+  const { categories, categoryDocs, addCategory, addSubcategory, addItem } = useAdmin();
   const navigate = useNavigate();
 
   const [batchItems, setBatchItems] = useState(() => {
@@ -53,6 +53,7 @@ export default function ExcelProductImporter() {
       {
         "Product Name": "Fresh Organic Tomatoes (1kg)",
         "Category": "Fresh Vegetables",
+        "Subcategory": "Organic",
         "MRP": 60,
         "Our Price": 45,
         "Image URL": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&auto=format&fit=crop&q=80",
@@ -61,6 +62,7 @@ export default function ExcelProductImporter() {
       {
         "Product Name": "Amul Taaza Toned Milk (1L)",
         "Category": "Dairy & Eggs",
+        "Subcategory": "Milk",
         "MRP": 54,
         "Our Price": 52,
         "Image URL": "",
@@ -68,7 +70,8 @@ export default function ExcelProductImporter() {
       },
       {
         "Product Name": "Fortune Sunflower Oil (1L)",
-        "Category": "Snacks & Munchies",
+        "Category": "Oils & Ghee",
+        "Subcategory": "Cooking Oil",
         "MRP": 160,
         "Our Price": 140,
         "Image URL": "",
@@ -120,6 +123,7 @@ export default function ExcelProductImporter() {
 
           const name = findVal(['product name', 'name', 'product', 'item name', 'item', 'title', 'product_name']);
           const category = findVal(['category', 'categories', 'cat', 'department', 'type', 'categore', 'caregere', 'product category']);
+          const subcategory = findVal(['subcategory', 'sub category', 'sub-category', 'subcat']);
           const sellingPrice = findVal(['mrp', 'mrp (₹)', 'mrp (rs)', 'selling price', 'original price', 'retail price', 'retail_price']);
           const price = findVal(['our price', 'price', 'our price (₹)', 'our price (rs)', 'sale price', 'offer price', 'cost']);
           const image = findVal(['image url', 'image', 'img', 'photo', 'picture', 'image_url']);
@@ -131,6 +135,7 @@ export default function ExcelProductImporter() {
             id: `batch-${Date.now()}-${idx}`,
             name: String(name || '').trim(),
             category: String(category || '').trim() || 'General',
+            subcategory: String(subcategory || '').trim(),
             sellingPrice: sellingPrice !== '' ? String(sellingPrice) : '',
             price: price !== '' ? String(price) : (sellingPrice !== '' ? String(sellingPrice) : ''),
             image: String(image || '').trim(),
@@ -173,6 +178,7 @@ export default function ExcelProductImporter() {
       id: `batch-${Date.now()}-${Math.random()}`,
       name: '',
       category: 'General',
+      subcategory: '',
       sellingPrice: '',
       price: '',
       image: '',
@@ -203,10 +209,29 @@ export default function ExcelProductImporter() {
 
         // Default fallback image if empty
         const finalImage = item.image.trim() || 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&auto=format&fit=crop&q=80';
+        
+        const finalCategory = item.category.trim() || 'General';
+        const finalSubcategory = item.subcategory?.trim() || '';
+
+        // Auto-create category if doesn't exist
+        if (!categories.some(c => c.toLowerCase() === finalCategory.toLowerCase())) {
+          await addCategory(finalCategory);
+        }
+
+        // Auto-create subcategory if doesn't exist
+        if (finalCategory && finalSubcategory) {
+           const catDoc = categoryDocs.find(c => c.name.toLowerCase() === finalCategory.toLowerCase());
+           // If category doc doesn't exist yet (because we just created it asynchronously or it wasn't loaded), 
+           // we just forcefully try to add it.
+           if (!catDoc || !(catDoc.subcategories || []).some(s => s.toLowerCase() === finalSubcategory.toLowerCase())) {
+             await addSubcategory(finalCategory, finalSubcategory);
+           }
+        }
 
         await addItem({
           name: item.name.trim(),
-          category: item.category.trim() || 'General',
+          category: finalCategory,
+          subcategory: finalSubcategory,
           sellingPrice: item.sellingPrice || item.price || '0',
           price: item.price || item.sellingPrice || '0',
           image: finalImage,
@@ -363,6 +388,7 @@ export default function ExcelProductImporter() {
                   <th className="py-3 px-3 w-12 text-center">#</th>
                   <th className="py-3 px-4 min-w-[200px]">Product Name *</th>
                   <th className="py-3 px-4 min-w-[150px]">Category</th>
+                  <th className="py-3 px-4 min-w-[150px]">Subcategory</th>
                   <th className="py-3 px-3 min-w-[110px]">MRP (₹)</th>
                   <th className="py-3 px-3 min-w-[110px]">Our Price (₹)</th>
                   <th className="py-3 px-4 min-w-[180px]">Product Image</th>
@@ -399,7 +425,10 @@ export default function ExcelProductImporter() {
                       <td className="py-3 px-4">
                         <select
                           value={item.category}
-                          onChange={(e) => updateBatchItem(item.id, 'category', e.target.value)}
+                          onChange={(e) => {
+                            updateBatchItem(item.id, 'category', e.target.value);
+                            updateBatchItem(item.id, 'subcategory', ''); // reset subcategory on category change
+                          }}
                           className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium focus:ring-2 focus:ring-emerald-500"
                         >
                           <option value="General">General</option>
@@ -410,6 +439,23 @@ export default function ExcelProductImporter() {
                             <option value={item.category}>{item.category}</option>
                           )}
                         </select>
+                      </td>
+
+                      {/* Subcategory Input/Dropdown */}
+                      <td className="py-3 px-4">
+                        <input
+                          type="text"
+                          value={item.subcategory || ''}
+                          placeholder="e.g. Organic"
+                          onChange={(e) => updateBatchItem(item.id, 'subcategory', e.target.value)}
+                          list={`subcategories-${item.category}`}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium focus:ring-2 focus:ring-emerald-500"
+                        />
+                        <datalist id={`subcategories-${item.category}`}>
+                           {categoryDocs.find(c => c.name === item.category)?.subcategories?.map(sub => (
+                             <option key={sub} value={sub} />
+                           ))}
+                        </datalist>
                       </td>
 
                       {/* MRP */}

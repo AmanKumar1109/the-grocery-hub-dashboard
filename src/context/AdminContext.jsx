@@ -8,8 +8,11 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  deleteDoc,
   getDocs,
-  writeBatch
+  writeBatch,
+  arrayUnion,
+  setDoc
 } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -38,6 +41,7 @@ export const AdminProvider = ({ children }) => {
 
   // Pure Real-time Firestore state
   const [categories, setCategories] = useState(defaultGroceryCategories);
+  const [categoryDocs, setCategoryDocs] = useState([]);
   const [items, setItems] = useState([]);
   const [staff, setStaff] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -137,13 +141,17 @@ export const AdminProvider = ({ children }) => {
       if (snap.empty) {
         // Auto-seed default grocery categories
         for (const catName of defaultGroceryCategories) {
-          await setDoc(doc(db, 'categories', catName), { name: catName }).catch(() => {});
+          await setDoc(doc(db, 'categories', catName), { name: catName, subcategories: [] }).catch(() => {});
         }
         setCategories(defaultGroceryCategories);
+        setCategoryDocs(defaultGroceryCategories.map(name => ({ id: name, name, subcategories: [] })));
       } else {
         const loadedCats = snap.docs.map(d => d.data().name || d.id);
+        const docs = snap.docs.map(d => ({ id: d.id, name: d.data().name || d.id, subcategories: d.data().subcategories || [] }));
         const cleanCats = loadedCats.filter(c => !['Burgers', 'Burger', 'Pizza', 'Pizzas', 'Salad', 'Salads', 'Drink', 'Drinks', 'Dessert', 'Desserts', 'Starters', 'Main Course', 'Fast Food'].includes(c));
+        const cleanDocs = docs.filter(c => cleanCats.includes(c.name));
         setCategories(cleanCats.length > 0 ? cleanCats : defaultGroceryCategories);
+        setCategoryDocs(cleanDocs.length > 0 ? cleanDocs : defaultGroceryCategories.map(name => ({ id: name, name, subcategories: [] })));
       }
     });
 
@@ -288,8 +296,66 @@ export const AdminProvider = ({ children }) => {
     if (categories.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
       return false;
     }
-    await setDoc(doc(db, 'categories', trimmed), { name: trimmed });
+    await setDoc(doc(db, 'categories', trimmed), { name: trimmed, subcategories: [] });
     await addAuditLog('CATEGORY_CREATED', `Added new menu category "${trimmed}"`, 'Catalog', 'success');
+    return true;
+  };
+
+  const addSubcategory = async (categoryName, subcategoryName) => {
+    const trimmed = subcategoryName.trim();
+    if (!trimmed) return false;
+    
+    const catRef = doc(db, 'categories', categoryName);
+    try {
+      await updateDoc(catRef, {
+        subcategories: arrayUnion(trimmed)
+      });
+    } catch (e) {
+      // If the category doc doesn't exist yet, create it.
+      await setDoc(catRef, { name: categoryName, subcategories: [trimmed] }, { merge: true });
+    }
+
+    await addAuditLog('SUBCATEGORY_CREATED', `Added subcategory "${trimmed}" to "${categoryName}"`, 'Catalog', 'success');
+    return true;
+  };
+
+  const deleteSubcategory = async (categoryName, subcategoryName) => {
+    const catDoc = categoryDocs.find(c => c.name === categoryName);
+    if (!catDoc) return false;
+    const newSubs = (catDoc.subcategories || []).filter(s => s !== subcategoryName);
+    await updateDoc(doc(db, 'categories', catDoc.id), {
+      subcategories: newSubs
+    });
+    await addAuditLog('SUBCATEGORY_DELETED', `Removed subcategory "${subcategoryName}" from "${categoryName}"`, 'Catalog', 'danger');
+    return true;
+  };
+
+  const renameSubcategory = async (categoryName, oldSubcategoryName, newSubcategoryName) => {
+    const trimmedNew = newSubcategoryName.trim();
+    if (!trimmedNew || oldSubcategoryName === trimmedNew) return false;
+    
+    const catDoc = categoryDocs.find(c => c.name === categoryName);
+    if (!catDoc) return false;
+    if (catDoc.subcategories && catDoc.subcategories.some(s => s.toLowerCase() === trimmedNew.toLowerCase())) return false;
+
+    // 1. Update category doc subcategories array
+    const newSubs = (catDoc.subcategories || []).map(s => s === oldSubcategoryName ? trimmedNew : s);
+    await updateDoc(doc(db, 'categories', catDoc.id), {
+      subcategories: newSubs
+    });
+
+    // 2. Find all items in this subcategory and update them
+    const itemsToUpdate = items.filter(i => i.category === categoryName && i.subcategory === oldSubcategoryName);
+    if (itemsToUpdate.length > 0) {
+      const batch = writeBatch(db);
+      itemsToUpdate.forEach(item => {
+        const itemRef = doc(db, 'items', item.id);
+        batch.update(itemRef, { subcategory: trimmedNew });
+      });
+      await batch.commit();
+    }
+
+    await addAuditLog('SUBCATEGORY_RENAMED', `Renamed subcategory "${oldSubcategoryName}" to "${trimmedNew}" in "${categoryName}"`, 'Catalog', 'info');
     return true;
   };
 
@@ -304,7 +370,9 @@ export const AdminProvider = ({ children }) => {
     if (categories.some(c => c.toLowerCase() === trimmedNew.toLowerCase())) return false;
 
     // 1. Create new category doc
-    await setDoc(doc(db, 'categories', trimmedNew), { name: trimmedNew });
+    const catDoc = categoryDocs.find(c => c.name === oldName);
+    const existingSubs = catDoc?.subcategories || [];
+    await setDoc(doc(db, 'categories', trimmedNew), { name: trimmedNew, subcategories: existingSubs });
 
     // 2. Find all items in the old category and update them
     const itemsToUpdate = items.filter(i => i.category === oldName);
@@ -346,6 +414,7 @@ export const AdminProvider = ({ children }) => {
     const createdItem = {
       ...newItem,
       category: finalCategory,
+      subcategory: newItem.subcategory || '',
       id: itemId,
       price: salePrice,
       sellingPrice: mrp,
@@ -376,6 +445,7 @@ export const AdminProvider = ({ children }) => {
     await updateDoc(doc(db, 'items', id), {
       ...updatedFields,
       category: finalCategory,
+      subcategory: updatedFields.subcategory || '',
       price: salePrice,
       sellingPrice: mrp,
       offPercentage,
@@ -703,6 +773,7 @@ export const AdminProvider = ({ children }) => {
   return (
     <AdminContext.Provider value={{
       categories,
+      categoryDocs,
       items,
       staff,
       orders,
@@ -713,6 +784,9 @@ export const AdminProvider = ({ children }) => {
       isLoading,
       cancelReasonsList,
       addCategory,
+      addSubcategory,
+      renameSubcategory,
+      deleteSubcategory,
       deleteCategory,
       renameCategory,
       addItem,

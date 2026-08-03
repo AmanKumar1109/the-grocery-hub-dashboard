@@ -63,7 +63,7 @@ function SortableItemWrapper({ id, children }) {
 }
 
 export default function ItemsView() {
-  const { items, categories, addCategory, deleteCategory, renameCategory, editItem, toggleItemTrending, toggleItemBogo, toggleItemVisibility, toggleItemStock, deleteItem, bulkUpdateItems, reorderItemsBatch } = useAdmin();
+  const { items, categories, categoryDocs, addCategory, addSubcategory, renameSubcategory, deleteSubcategory, deleteCategory, renameCategory, editItem, toggleItemTrending, toggleItemBogo, toggleItemVisibility, toggleItemStock, deleteItem, bulkUpdateItems, reorderItemsBatch } = useAdmin();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [outOfStockOnly, setOutOfStockOnly] = useState(false);
@@ -75,6 +75,7 @@ export default function ItemsView() {
   const [movingItem, setMovingItem] = useState(null);
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
   const [isRenameCategoryModalOpen, setIsRenameCategoryModalOpen] = useState(false);
+  const [isRenameSubcategoryModalOpen, setIsRenameSubcategoryModalOpen] = useState(false);
 
   // Bulk selection state
   const [selectedItemIds, setSelectedItemIds] = useState([]);
@@ -88,9 +89,14 @@ export default function ItemsView() {
   const [oldCategoryName, setOldCategoryName] = useState('');
   const [moveToCategoryName, setMoveToCategoryName] = useState('');
 
+  const [renameSubcategoryName, setRenameSubcategoryName] = useState('');
+  const [oldSubcategoryName, setOldSubcategoryName] = useState('');
+  const [parentCategoryForSub, setParentCategoryForSub] = useState('');
+
   const [editFormData, setEditFormData] = useState({
     name: '',
     category: '',
+    subcategory: '',
     price: '',
     sellingPrice: '',
     recentBuyers: '',
@@ -173,6 +179,7 @@ export default function ItemsView() {
     setEditFormData({
       name: item.name,
       category: item.category,
+      subcategory: item.subcategory || '',
       price: item.price,
       sellingPrice: item.sellingPrice || '',
       recentBuyers: item.recentBuyers !== undefined ? item.recentBuyers : '',
@@ -667,41 +674,76 @@ export default function ItemsView() {
                 {categories.length === 0 ? (
                   <p className="text-xs text-slate-400 text-center py-4">No categories created yet.</p>
                 ) : (
-                  categories.map((c) => (
+                  categoryDocs.map((catDoc) => (
                     <div
-                      key={c}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 transition-colors"
+                      key={catDoc.name}
+                      className="flex flex-col gap-2 p-2.5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 transition-colors"
                     >
-                      <span className="text-xs font-bold text-slate-800">{c}</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOldCategoryName(c);
-                            setRenameCategoryName(c);
-                            setIsAddCategoryModalOpen(false);
-                            setIsRenameCategoryModalOpen(true);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-[11px] font-bold border border-amber-200 flex items-center gap-1 transition-colors cursor-pointer"
-                          title={`Rename Category "${c}"`}
-                        >
-                          <PenLine className="w-3.5 h-3.5" /> Rename
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (window.confirm(`Are you sure you want to delete category "${c}"?`)) {
-                              await deleteCategory(c);
-                              if (selectedCategory === c) {
-                                setSelectedCategory('All');
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800">{catDoc.name}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOldCategoryName(catDoc.name);
+                              setRenameCategoryName(catDoc.name);
+                              setIsAddCategoryModalOpen(false);
+                              setIsRenameCategoryModalOpen(true);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-[11px] font-bold border border-amber-200 flex items-center gap-1 transition-colors cursor-pointer"
+                            title={`Rename Category "${catDoc.name}"`}
+                          >
+                            <PenLine className="w-3.5 h-3.5" /> Rename
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (window.confirm(`Are you sure you want to delete category "${catDoc.name}"?`)) {
+                                await deleteCategory(catDoc.name);
+                                if (selectedCategory === catDoc.name) {
+                                  setSelectedCategory('All');
+                                }
                               }
-                            }
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-bold border border-rose-200 flex items-center gap-1 transition-colors cursor-pointer"
-                          title={`Delete Category "${c}"`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Delete
-                        </button>
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-bold border border-rose-200 flex items-center gap-1 transition-colors cursor-pointer"
+                            title={`Delete Category "${catDoc.name}"`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Delete
+                          </button>
+                        </div>
+                      </div>
+                      <div className="pt-2 border-t border-slate-50 space-y-2">
+                        {/* Subcategories list */}
+                        <div className="flex flex-wrap gap-1.5">
+                          {(catDoc.subcategories || []).map(sub => (
+                            <span key={sub} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-[10px] font-bold text-slate-700">
+                              {sub}
+                              <button type="button" onClick={() => {
+                                setOldSubcategoryName(sub);
+                                setRenameSubcategoryName(sub);
+                                setParentCategoryForSub(catDoc.name);
+                                setIsAddCategoryModalOpen(false);
+                                setIsRenameSubcategoryModalOpen(true);
+                              }} className="text-slate-400 hover:text-amber-500 cursor-pointer ml-1" title="Rename Subcategory">
+                                <PenLine className="w-3 h-3" />
+                              </button>
+                              <button type="button" onClick={async () => {
+                                if(window.confirm(`Delete subcategory "${sub}" from "${catDoc.name}"?`)) {
+                                  await deleteSubcategory(catDoc.name, sub);
+                                }
+                              }} className="text-slate-400 hover:text-rose-500 cursor-pointer" title="Delete Subcategory">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <input type="text" id={`new-sub-${catDoc.name}`} placeholder="Add Subcategory..." className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                          <button type="button" onClick={async () => {
+                            const input = document.getElementById(`new-sub-${catDoc.name}`);
+                            if(input.value) { await addSubcategory(catDoc.name, input.value); input.value = ''; }
+                          }} className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[10px] font-bold cursor-pointer">Add</button>
+                        </div>
                       </div>
                     </div>
                   ))
@@ -750,7 +792,7 @@ export default function ItemsView() {
                   <label className="font-bold text-slate-700 block mb-1">Category (Optional)</label>
                   <select
                     value={editFormData.category}
-                    onChange={e => setEditFormData({ ...editFormData, category: e.target.value })}
+                    onChange={e => setEditFormData({ ...editFormData, category: e.target.value, subcategory: '' })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">General / None (No Category)</option>
@@ -759,6 +801,23 @@ export default function ItemsView() {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Subcategory (Optional)</label>
+                  <select
+                    value={editFormData.subcategory}
+                    onChange={e => setEditFormData({ ...editFormData, subcategory: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                    disabled={!editFormData.category}
+                  >
+                    <option value="">None</option>
+                    {categoryDocs.find(c => c.name === editFormData.category)?.subcategories?.map(sub => (
+                      <option key={sub} value={sub}>{sub}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">MRP / Selling Price (₹)</label>
                   <input
@@ -770,9 +829,6 @@ export default function ItemsView() {
                     placeholder="e.g. 60.00"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
                     Our Price (₹)
@@ -947,6 +1003,77 @@ export default function ItemsView() {
 
               <div className="pt-2 flex justify-end gap-2">
                 <button type="button" onClick={() => setIsRenameCategoryModalOpen(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">
+                  Cancel
+                </button>
+                <button type="submit" className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm">
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* RENAME SUBCATEGORY MODAL */}
+      {isRenameSubcategoryModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white w-full max-w-sm rounded-2xl border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                  <PenLine className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-slate-800">Rename Subcategory</h3>
+              </div>
+              <button onClick={() => {
+                setIsRenameSubcategoryModalOpen(false);
+                setIsAddCategoryModalOpen(true);
+              }} className="text-slate-400 hover:text-slate-700 bg-slate-50 p-1.5 rounded-full">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setCategoryError('');
+              if (!renameSubcategoryName.trim() || !oldSubcategoryName.trim()) return;
+              
+              const success = await renameSubcategory(parentCategoryForSub, oldSubcategoryName, renameSubcategoryName);
+              if (!success) {
+                setCategoryError('Subcategory name already exists or is invalid.');
+                return;
+              }
+              setIsRenameSubcategoryModalOpen(false);
+              setRenameSubcategoryName('');
+              setOldSubcategoryName('');
+              setParentCategoryForSub('');
+              setIsAddCategoryModalOpen(true);
+            }} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1.5">New Subcategory Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={renameSubcategoryName}
+                  onChange={(e) => setRenameSubcategoryName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                  placeholder="e.g. Basmati"
+                />
+              </div>
+              {categoryError && <p className="text-[11px] text-rose-500 font-bold">{categoryError}</p>}
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
+                <p className="text-[10px] text-amber-800 font-bold leading-tight flex items-start gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  Renaming this subcategory will instantly update all items currently assigned to it!
+                </p>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button type="button" onClick={() => {
+                  setIsRenameSubcategoryModalOpen(false);
+                  setIsAddCategoryModalOpen(true);
+                }} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">
                   Cancel
                 </button>
                 <button type="submit" className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm">
