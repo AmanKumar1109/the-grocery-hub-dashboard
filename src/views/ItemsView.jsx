@@ -88,6 +88,7 @@ export default function ItemsView() {
   const [renameCategoryName, setRenameCategoryName] = useState('');
   const [oldCategoryName, setOldCategoryName] = useState('');
   const [moveToCategoryName, setMoveToCategoryName] = useState('');
+  const [moveToSubcategoryName, setMoveToSubcategoryName] = useState('');
 
   const [renameSubcategoryName, setRenameSubcategoryName] = useState('');
   const [oldSubcategoryName, setOldSubcategoryName] = useState('');
@@ -226,20 +227,22 @@ export default function ItemsView() {
   const handleMoveItemSubmit = async (e) => {
     e.preventDefault();
     if (movingItem && moveToCategoryName) {
-      await editItem(movingItem.id, { ...movingItem, category: moveToCategoryName });
+      await editItem(movingItem.id, { ...movingItem, category: moveToCategoryName, subcategory: moveToSubcategoryName });
       setMovingItem(null);
       setMoveToCategoryName('');
+      setMoveToSubcategoryName('');
     }
   };
 
   const handleBulkMoveSubmit = async (e) => {
     e.preventDefault();
     if (selectedItemIds.length > 0 && moveToCategoryName) {
-      const updates = { category: moveToCategoryName };
+      const updates = { category: moveToCategoryName, subcategory: moveToSubcategoryName };
       await bulkUpdateItems(selectedItemIds, updates);
       setIsBulkMoveModalOpen(false);
       setSelectedItemIds([]);
       setMoveToCategoryName('');
+      setMoveToSubcategoryName('');
     }
   };
 
@@ -1113,12 +1116,30 @@ export default function ItemsView() {
                 <select
                   required
                   value={moveToCategoryName}
-                  onChange={(e) => setMoveToCategoryName(e.target.value)}
+                  onChange={(e) => {
+                    setMoveToCategoryName(e.target.value);
+                    setMoveToSubcategoryName('');
+                  }}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="" disabled>Select category...</option>
                   {categories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1.5">Select Subcategory (Optional)</label>
+                <select
+                  value={moveToSubcategoryName}
+                  onChange={(e) => setMoveToSubcategoryName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                  disabled={!moveToCategoryName}
+                >
+                  <option value="">None</option>
+                  {categoryDocs.find(c => c.name === moveToCategoryName)?.subcategories?.map(sub => (
+                    <option key={sub} value={sub}>{sub}</option>
                   ))}
                 </select>
               </div>
@@ -1163,12 +1184,30 @@ export default function ItemsView() {
                 <select
                   required
                   value={moveToCategoryName}
-                  onChange={(e) => setMoveToCategoryName(e.target.value)}
+                  onChange={(e) => {
+                    setMoveToCategoryName(e.target.value);
+                    setMoveToSubcategoryName('');
+                  }}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="" disabled>Select category...</option>
                   {categories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1.5">Select Subcategory (Optional)</label>
+                <select
+                  value={moveToSubcategoryName}
+                  onChange={(e) => setMoveToSubcategoryName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                  disabled={!moveToCategoryName}
+                >
+                  <option value="">None</option>
+                  {categoryDocs.find(c => c.name === moveToCategoryName)?.subcategories?.map(sub => (
+                    <option key={sub} value={sub}>{sub}</option>
                   ))}
                 </select>
               </div>

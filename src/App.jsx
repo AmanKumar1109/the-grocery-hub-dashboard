@@ -27,6 +27,9 @@ import TermsOfServiceView from './views/TermsOfServiceView';
 import StoreSettingsView from './views/StoreSettingsView';
 import RefundPolicyView from './views/RefundPolicyView';
 import AboutUsView from './views/AboutUsView';
+import CancellationPolicyView from './views/CancellationPolicyView';
+import DisclaimerView from './views/DisclaimerView';
+import ShippingPolicyView from './views/ShippingPolicyView';
 
 // Admin layout — sidebar + content
 function AdminLayout() {
@@ -51,6 +54,9 @@ function AdminLayout() {
             <Route path="terms-of-service" element={<TermsOfServiceView />} />
             <Route path="refund-policy" element={<RefundPolicyView />} />
             <Route path="about-us" element={<AboutUsView />} />
+            <Route path="cancellation-policy" element={<CancellationPolicyView />} />
+            <Route path="disclaimer" element={<DisclaimerView />} />
+            <Route path="shipping-policy" element={<ShippingPolicyView />} />
             <Route path="store-settings" element={<StoreSettingsView />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

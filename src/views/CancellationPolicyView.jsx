@@ -12,9 +12,9 @@ import {
 } from 'lucide-react';
 import JoditEditor from 'jodit-react';
 
-const POLICY_DOC_REF = doc(db, 'settings', 'termsOfService');
+const POLICY_DOC_REF = doc(db, 'settings', 'cancellationPolicy');
 
-export default function TermsOfServiceView() {
+export default function cancellationPolicyView() {
   const editorRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,8 +43,8 @@ export default function TermsOfServiceView() {
           setTimeout(() => updateWordCount(loadedContent), 100);
         }
       } catch (err) {
-        console.error('Failed to load Terms and Conditions:', err);
-        setError('Failed to load Terms and Conditions content.');
+        console.error('Failed to load Cancellation Policy:', err);
+        setError('Failed to load Cancellation Policy content.');
       } finally {
         setLoading(false);
       }
@@ -71,7 +71,7 @@ export default function TermsOfServiceView() {
   // Jodit Editor Config
   const joditConfig = useMemo(() => ({
     readonly: false,
-    placeholder: 'Start writing your Terms and Conditions here...',
+    placeholder: 'Start writing your Cancellation Policy here...',
     height: 600,
     style: {
       fontFamily: 'inherit',
@@ -106,7 +106,7 @@ export default function TermsOfServiceView() {
       setLastUpdated(new Date());
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      console.error('Failed to save Terms and Conditions:', err);
+      console.error('Failed to save Cancellation Policy:', err);
       setError('Failed to save. Please try again.');
     } finally {
       setSaving(false);
@@ -118,7 +118,7 @@ export default function TermsOfServiceView() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
-          <p className="text-sm font-semibold text-slate-500">Loading Terms and Conditions…</p>
+          <p className="text-sm font-semibold text-slate-500">Loading Cancellation Policy…</p>
         </div>
       </div>
     );
@@ -134,7 +134,7 @@ export default function TermsOfServiceView() {
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-lg font-extrabold text-slate-800 tracking-tight">Terms and Conditions</h1>
+              <h1 className="text-lg font-extrabold text-slate-800 tracking-tight">Cancellation Policy</h1>
               <p className="text-xs text-slate-400 font-medium">
                 {lastUpdated
                   ? `Last updated: ${lastUpdated.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`

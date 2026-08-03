@@ -133,13 +133,28 @@ export default function Sidebar() {
           icon: FileText
         },
         {
-          name: 'Terms of Service',
+          name: 'Terms and Conditions',
           path: '/dashboard/terms-of-service',
           icon: FileText
         },
         {
           name: 'Refund Policy',
           path: '/dashboard/refund-policy',
+          icon: FileText
+        },
+        {
+          name: 'Cancellation Policy',
+          path: '/dashboard/cancellation-policy',
+          icon: FileText
+        },
+        {
+          name: 'Disclaimer',
+          path: '/dashboard/disclaimer',
+          icon: FileText
+        },
+        {
+          name: 'Shipping & Delivery',
+          path: '/dashboard/shipping-policy',
           icon: FileText
         },
         {
