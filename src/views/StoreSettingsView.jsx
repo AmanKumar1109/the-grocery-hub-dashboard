@@ -10,6 +10,8 @@ const SETTINGS_DOC_REF = doc(db, 'settings', 'global');
 export default function StoreSettingsView() {
   const { items, categories, categoryDocs } = useAdmin();
   const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [categorySearchQuery, setCategorySearchQuery] = useState('');
+  const [isCategorySearchFocused, setIsCategorySearchFocused] = useState(false);
   const [focusedBannerInput, setFocusedBannerInput] = useState(null);
   
   const [loading, setLoading] = useState(true);
@@ -328,6 +330,33 @@ export default function StoreSettingsView() {
     });
   };
 
+  const handleAddSearchCategory = (catName) => {
+    setSettings(prev => {
+      const currentList = prev.searchDropdownCategories 
+        ? prev.searchDropdownCategories.split('\n').filter(p => p.trim() !== '')
+        : ['All Categories'];
+      if (!currentList.includes(catName)) {
+        currentList.push(catName);
+      }
+      return { ...prev, searchDropdownCategories: currentList.join('\n') };
+    });
+  };
+
+  const handleRemoveSearchCategory = (catName) => {
+    if (catName === 'All Categories') return; 
+    setSettings(prev => {
+      const currentList = prev.searchDropdownCategories 
+        ? prev.searchDropdownCategories.split('\n').filter(p => p.trim() !== '')
+        : [];
+      const newList = currentList.filter(name => name !== catName);
+      return { ...prev, searchDropdownCategories: newList.join('\n') };
+    });
+  };
+
+  const selectedSearchCategories = settings.searchDropdownCategories 
+    ? settings.searchDropdownCategories.split('\n').filter(p => p.trim() !== '')
+    : ['All Categories', 'Rice & Atta', 'Dals & Pulses', 'Oils & Ghee', 'Spices & Masalas', 'Snacks & Biscuits'];
+
   const selectedPopularProductNames = settings.searchPopularProducts 
     ? settings.searchPopularProducts.split('\n').filter(p => p.trim() !== '')
     : [];
@@ -335,6 +364,31 @@ export default function StoreSettingsView() {
   const searchMatchingProducts = productSearchQuery.trim()
     ? (items || []).filter(p => p.name.toLowerCase().includes(productSearchQuery.toLowerCase()))
     : [];
+
+  const allSearchableCats = [];
+  (categoryDocs || []).forEach(cat => {
+    allSearchableCats.push({ type: 'Category', name: cat.name, label: `📦 ${cat.name} (Main Category)` });
+    (cat.subcategories || []).forEach(sub => {
+      allSearchableCats.push({ type: 'Subcategory', name: sub, label: `↳ 📂 ${sub} (in ${cat.name})` });
+    });
+  });
+
+  const filteredSearchableCats = categorySearchQuery
+    ? allSearchableCats.filter(c => c.name.toLowerCase().includes(categorySearchQuery.toLowerCase()))
+    : allSearchableCats;
+
+  const filteredCategoryDocsForSelect = categorySearchQuery.trim()
+    ? (categoryDocs || []).map(cat => {
+        if (cat.name.toLowerCase().includes(categorySearchQuery.toLowerCase())) {
+          return cat;
+        }
+        const matchingSubs = (cat.subcategories || []).filter(sub => 
+          sub.toLowerCase().includes(categorySearchQuery.toLowerCase())
+        );
+        if (matchingSubs.length === 0) return null;
+        return { ...cat, subcategories: matchingSubs };
+      }).filter(Boolean)
+    : (categoryDocs || []);
 
   const handlePromoBannerChange = (index, field, value) => {
     setSettings(prev => {
@@ -653,16 +707,88 @@ export default function StoreSettingsView() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Dropdown Categories (One per line)</label>
-                <textarea
-                  name="searchDropdownCategories"
-                  value={settings.searchDropdownCategories ?? 'All Categories\nRice & Atta\nDals & Pulses\nOils & Ghee\nSpices & Masalas\nSnacks & Biscuits'}
-                  onChange={handleChange}
-                  rows={5}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all outline-none font-medium"
-                  placeholder="e.g. All Categories&#10;Dairy&#10;Bakery"
-                />
-                <p className="text-[10px] text-slate-500 mt-1.5 font-medium">First item is usually "All Categories". These appear in the dropdown next to the search input.</p>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Search Bar Categories / Subcategories</label>
+                
+                {/* Display Chips */}
+                <div className="flex flex-wrap gap-2 mb-3 p-3 bg-slate-50 border border-slate-200 rounded-xl min-h-[60px]">
+                  {selectedSearchCategories.map((name, idx) => (
+                    <div key={idx} className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm">
+                      {name}
+                      {name !== 'All Categories' && (
+                        <button type="button" onClick={() => handleRemoveSearchCategory(name)} className="hover:bg-amber-200 p-0.5 rounded-full transition-colors ml-1 cursor-pointer">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Select with Side Search */}
+                <div className="flex gap-2 items-center">
+                  <div className="relative w-1/3 min-w-[150px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search..."
+                      value={categorySearchQuery}
+                      onChange={(e) => setCategorySearchQuery(e.target.value)}
+                      onFocus={() => setIsCategorySearchFocused(true)}
+                      onBlur={() => setTimeout(() => setIsCategorySearchFocused(false), 200)}
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all outline-none font-medium"
+                    />
+
+                    {isCategorySearchFocused && (
+                      <div className="absolute top-full left-0 z-50 w-full min-w-[250px] mt-2 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden">
+                        <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                          {filteredSearchableCats.length > 0 ? (
+                            filteredSearchableCats.map((item, idx) => (
+                              <div
+                                key={idx}
+                                onMouseDown={(e) => e.preventDefault()} // Prevents blur from firing before click
+                                onClick={() => {
+                                  handleAddSearchCategory(item.name);
+                                  setCategorySearchQuery('');
+                                  setIsCategorySearchFocused(false);
+                                }}
+                                className="px-4 py-3 hover:bg-slate-50 cursor-pointer flex items-center gap-3 border-b border-slate-50 last:border-0"
+                              >
+                                <div>
+                                  <h4 className="text-sm font-bold text-slate-800">{item.name}</h4>
+                                  <p className="text-[10px] text-slate-500 font-medium">{item.label}</p>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="px-4 py-4 text-center text-sm text-slate-500 font-medium">
+                              No matches found for "{categorySearchQuery}"
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex-1">
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) handleAddSearchCategory(e.target.value);
+                        e.target.value = ""; 
+                      }}
+                      className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all outline-none font-medium cursor-pointer"
+                    >
+                      <option value="">+ Add a Category or Subcategory</option>
+                      {filteredCategoryDocsForSelect.map(cat => (
+                        <optgroup key={cat.name} label={`📦 ${cat.name}`}>
+                          <option value={cat.name}>📁 {cat.name} (Main Category)</option>
+                          {(cat.subcategories || []).map(sub => (
+                            <option key={sub} value={sub}>↳ 📂 {sub}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1.5 font-medium">These appear in the dropdown next to the search input.</p>
               </div>
 
               <div>
