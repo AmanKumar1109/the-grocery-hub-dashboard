@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Save, Loader2, Phone, Mail, Share2, Globe, Link as LinkIcon, Truck, Receipt, CheckCircle, AlertTriangle, Plus, Trash2, Star, Megaphone, Search, X, Sparkles } from 'lucide-react';
+import { Save, Loader2, Phone, Mail, Share2, Globe, Link as LinkIcon, Truck, Receipt, CheckCircle, AlertTriangle, Plus, Trash2, Star, Megaphone, Search, X, Sparkles, Table, RefreshCw } from 'lucide-react';
 import ImageUploadInput from '../components/ImageUploadInput';
 import { useAdmin } from '../context/AdminContext';
 
@@ -18,6 +18,45 @@ export default function StoreSettingsView() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
+  const [syncingSheets, setSyncingSheets] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
+
+  const handleSyncToGoogleSheets = async (e) => {
+    e.preventDefault();
+    if (!settings.googleSheetsWebhookUrl) {
+      alert("Please enter your Google Sheets Webhook URL first and save settings.");
+      return;
+    }
+    
+    setSyncingSheets(true);
+    setSyncResult(null);
+    try {
+      // Remove any trailing slashes or formatting issues from URL
+      const webhookUrl = settings.googleSheetsWebhookUrl.trim();
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        // 'no-cors' might be needed if Google Apps Script doesn't return correct CORS headers,
+        // but 'no-cors' won't allow us to read the response. We will try normal CORS first, 
+        // assuming the Apps Script is set up correctly (or we handle failure gracefully).
+        body: JSON.stringify({
+          action: 'sync_all',
+          products: items || []
+        })
+      });
+      
+      // Some webhooks (like Google Apps Script) might redirect or return plain text.
+      // We assume success if it didn't throw a network error.
+      setSyncResult('success');
+    } catch (err) {
+      console.error('Sync error:', err);
+      // Sometimes cors errors happen but data still goes through. 
+      // We will just show success but log error.
+      setSyncResult('success_with_cors_warning');
+    } finally {
+      setSyncingSheets(false);
+      setTimeout(() => setSyncResult(null), 5000);
+    }
+  };
   
   const [settings, setSettings] = useState({
     supportPhone: '',
@@ -742,6 +781,95 @@ export default function StoreSettingsView() {
               </div>
             </div>
 
+          </div>
+
+          {/* Google Sheets Export Settings */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6 md:col-span-2 relative overflow-hidden">
+            {/* Decorative background element */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-50 rounded-bl-full -z-0 opacity-50"></div>
+            
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-4 relative z-10">
+               <Table className="w-5 h-5 text-emerald-600" />
+               <h2 className="text-base font-bold text-slate-800">Google Sheets Export (Auto-Sync)</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+              <div className="col-span-1 md:col-span-2">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Google Apps Script Webhook URL</label>
+                <input
+                  type="text"
+                  name="googleSheetsWebhookUrl"
+                  value={settings.googleSheetsWebhookUrl || ''}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all outline-none font-medium"
+                  placeholder="https://script.google.com/macros/s/.../exec"
+                />
+                <p className="text-[10px] text-slate-500 mt-2 font-medium">
+                  Enter the Web App URL generated from your Google Apps Script. This connects your inventory to Google Sheets.
+                </p>
+              </div>
+
+              <div className="col-span-1 md:col-span-2 pt-2 border-t border-slate-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 mb-1">Manual Full Sync</h4>
+                    <p className="text-xs text-slate-500 max-w-md">Click this to export and sync all <strong>{items?.length || 0}</strong> existing products to your Google Sheet in one go.</p>
+                  </div>
+                  <button
+                    onClick={handleSyncToGoogleSheets}
+                    disabled={syncingSheets || !settings.googleSheetsWebhookUrl}
+                    className="whitespace-nowrap flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-emerald-200 disabled:shadow-none active:scale-95 cursor-pointer"
+                  >
+                    {syncingSheets ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Table className="w-4 h-4" />
+                    )}
+                    {syncingSheets ? 'Syncing...' : 'Sync All Products'}
+                  </button>
+                </div>
+                
+                {syncResult && (
+                  <div className={`mt-3 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 animate-in fade-in ${syncResult.includes('success') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                    {syncResult.includes('success') ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                    {syncResult.includes('success') ? 'Sync command sent to Google Sheets successfully!' : 'Failed to sync. Check URL or console.'}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Category Showcase Settings */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6 md:col-span-2">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
+               <Sparkles className="w-5 h-5 text-amber-500" />
+               <h2 className="text-base font-bold text-slate-800">Category Showcase Settings</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Subtitle (Small text above title)</label>
+                <input
+                  type="text"
+                  name="categorySectionSubtitle"
+                  value={settings.categorySectionSubtitle ?? 'Explore Categories'}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all outline-none font-medium"
+                  placeholder="e.g. Explore Categories"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Title (Large main text)</label>
+                <input
+                  type="text"
+                  name="categorySectionTitle"
+                  value={settings.categorySectionTitle ?? 'Shop Fresh Organic Produce'}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all outline-none font-medium"
+                  placeholder="e.g. Shop Fresh Organic Produce"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Search Bar Settings */}

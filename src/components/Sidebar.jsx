@@ -15,7 +15,8 @@ import {
   FileText,
   LogOut,
   Settings,
-  Image
+  Image,
+  Star
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import { useAuth } from '../context/AuthContext';
