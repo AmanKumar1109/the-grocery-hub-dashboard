@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Save, Loader2, Phone, Mail, Share2, Globe, Link as LinkIcon, Truck, Receipt, CheckCircle, AlertTriangle, Plus, Trash2, Star, Megaphone, Search, X } from 'lucide-react';
+import { Save, Loader2, Phone, Mail, Share2, Globe, Link as LinkIcon, Truck, Receipt, CheckCircle, AlertTriangle, Plus, Trash2, Star, Megaphone, Search, X, Sparkles } from 'lucide-react';
 import ImageUploadInput from '../components/ImageUploadInput';
 import { useAdmin } from '../context/AdminContext';
 
@@ -75,6 +75,26 @@ export default function StoreSettingsView() {
         verified: true,
         avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=150',
       }
+    ],
+    whyShopBadge: 'Why Choose Us',
+    whyShopTitle: 'Why Shop From The Grocery Hub?',
+    whyShopSubtitle: 'Baharagora ka sabse bharosemand grocery partner — fresh quality, fastest delivery, aur best prices ke saath har din aapke ghar tak.',
+    whyShopCtaText: 'Start Shopping Now',
+    whyShopCtaLink: '#shop',
+    whyShopTrustLine: '1,500+ customers trust us daily',
+    whyShopStats: [
+      { value: 1500, suffix: '+', label: 'Happy Customers' },
+      { value: 15, suffix: ' Min', label: 'Express Delivery' },
+      { value: 100, suffix: '%', label: 'Organic & Fresh' },
+      { value: 500, suffix: '+', label: 'Products Available' }
+    ],
+    whyShopFeatures: [
+      { title: 'Farm Fresh Quality', description: 'Seedhi khet se aapke ghar tak — har sabzi aur fruit 100% organic aur chemical-free hota hai.', iconName: 'Leaf', colorTheme: 'emerald' },
+      { title: '15-Min Superfast Delivery', description: 'Order karte hi 15 minute mein delivery! Baharagora ke har mohalle mein lightning-fast service.', iconName: 'Truck', colorTheme: 'amber' },
+      { title: 'Sabse Sasta Price Guarantee', description: 'Direct farm sourcing ka fayda — market se kam rate pe milega har samaan, with daily offers aur deals.', iconName: 'BadgePercent', colorTheme: 'rose' },
+      { title: '100% Safe & Secure', description: 'Certified products, secure payments aur tamper-proof packaging. Aapka trust hi hamari pehchaan hai.', iconName: 'ShieldCheck', colorTheme: 'sky' },
+      { title: 'No-Questions Returns', description: 'Product pasand nahi aaya? Koi baat nahi! Instant refund ya replacement — bina koi sawal ke.', iconName: 'HeartHandshake', colorTheme: 'violet' },
+      { title: 'Open 7 Days a Week', description: 'Subah se raat tak, Monday se Sunday — jab chaaho tab order karo. Hum hamesha available hain!', iconName: 'Clock', colorTheme: 'teal' }
     ],
     footerTitle: 'Get Fresh Groceries in 15 Minutes!',
     footerEmoji: '🚀',
@@ -261,6 +281,53 @@ export default function StoreSettingsView() {
     });
   };
 
+  // Why Shop From Us Handlers
+  const handleAddWhyShopFeature = () => {
+    setSettings(prev => ({
+      ...prev,
+      whyShopFeatures: [...(prev.whyShopFeatures || []), { title: '', description: '', iconName: 'Leaf', colorTheme: 'emerald' }]
+    }));
+  };
+
+  const handleRemoveWhyShopFeature = (index) => {
+    setSettings(prev => {
+      const newList = [...(prev.whyShopFeatures || [])];
+      newList.splice(index, 1);
+      return { ...prev, whyShopFeatures: newList };
+    });
+  };
+
+  const handleWhyShopFeatureChange = (index, field, value) => {
+    setSettings(prev => {
+      const newList = [...(prev.whyShopFeatures || [])];
+      newList[index] = { ...newList[index], [field]: value };
+      return { ...prev, whyShopFeatures: newList };
+    });
+  };
+
+  const handleAddWhyShopStat = () => {
+    setSettings(prev => ({
+      ...prev,
+      whyShopStats: [...(prev.whyShopStats || []), { value: 0, suffix: '+', label: '' }]
+    }));
+  };
+
+  const handleRemoveWhyShopStat = (index) => {
+    setSettings(prev => {
+      const newList = [...(prev.whyShopStats || [])];
+      newList.splice(index, 1);
+      return { ...prev, whyShopStats: newList };
+    });
+  };
+
+  const handleWhyShopStatChange = (index, field, value) => {
+    setSettings(prev => {
+      const newList = [...(prev.whyShopStats || [])];
+      newList[index] = { ...newList[index], [field]: field === 'value' ? Number(value) : value };
+      return { ...prev, whyShopStats: newList };
+    });
+  };
+
   // Footer Link Handlers
   const handleFooterColChange = (colIndex, title) => {
     setSettings(prev => {
@@ -430,8 +497,12 @@ export default function StoreSettingsView() {
     setSaving(true);
     setError(null);
     try {
+      // Strip temporary UI state keys (prefixed with _) before saving
+      const cleanSettings = Object.fromEntries(
+        Object.entries(settings).filter(([key]) => !key.startsWith('_'))
+      );
       await setDoc(SETTINGS_DOC_REF, {
-        ...settings,
+        ...cleanSettings,
         updatedAt: serverTimestamp()
       });
       setSaved(true);
@@ -1024,6 +1095,329 @@ export default function StoreSettingsView() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Why Shop From Us Section Settings */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6 md:col-span-2">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
+               <Sparkles className="w-5 h-5 text-emerald-500" />
+               <h2 className="text-base font-bold text-slate-800">Why Shop From Us Section</h2>
+            </div>
+
+            {/* Section Headings */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-sm text-indigo-600 border-b border-slate-100 pb-1.5">Section Headings & CTA</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Badge Text (small label)</label>
+                  <input
+                    type="text"
+                    name="whyShopBadge"
+                    value={settings.whyShopBadge || ''}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium"
+                    placeholder="e.g. Why Choose Us"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Main Title</label>
+                  <input
+                    type="text"
+                    name="whyShopTitle"
+                    value={settings.whyShopTitle || ''}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium"
+                    placeholder="e.g. Why Shop From The Grocery Hub?"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Subtitle / Description</label>
+                  <textarea
+                    name="whyShopSubtitle"
+                    value={settings.whyShopSubtitle || ''}
+                    onChange={handleChange}
+                    rows={2}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium"
+                    placeholder="Brief description about why customers should shop from you"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">CTA Button Text</label>
+                  <input
+                    type="text"
+                    name="whyShopCtaText"
+                    value={settings.whyShopCtaText || ''}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium"
+                    placeholder="e.g. Start Shopping Now"
+                  />
+                </div>
+                <div className="relative">
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">CTA Button Link</label>
+                  {(() => {
+                    const ctaLinkPages = [
+                      { value: '#shop', label: '🏠 Homepage — Shop Section', group: 'Pages' },
+                      { value: '/', label: '🏠 Homepage', group: 'Pages' },
+                      { value: '/catalog', label: '🛒 Full Catalog', group: 'Pages' },
+                      { value: '/about-us', label: 'ℹ️ About Us', group: 'Pages' },
+                      { value: '/complaint', label: '📝 Lodge Complaint', group: 'Pages' },
+                      { value: '/privacy-policy', label: '🔒 Privacy Policy', group: 'Pages' },
+                      { value: '/terms-of-service', label: '📜 Terms & Conditions', group: 'Pages' },
+                      { value: '/refund-policy', label: '💰 Refund Policy', group: 'Pages' },
+                      { value: '/cancellation-policy', label: '❌ Cancellation Policy', group: 'Pages' },
+                      { value: '/shipping-policy', label: '🚚 Shipping & Delivery', group: 'Pages' },
+                      { value: '/disclaimer', label: '⚠️ Disclaimer', group: 'Pages' },
+                    ];
+                    const ctaLinkCategories = (categoryDocs || []).flatMap(cat => [
+                      { value: `/?category=${encodeURIComponent(cat.name)}`, label: `📦 ${cat.name}`, group: 'Categories' },
+                      ...(cat.subcategories || []).map(sub => ({
+                        value: `/catalog?search=${encodeURIComponent(sub)}`,
+                        label: `  ↳ ${sub}`,
+                        group: 'Categories'
+                      }))
+                    ]);
+                    const allCtaOptions = [...ctaLinkPages, ...ctaLinkCategories];
+                    const selectedLabel = allCtaOptions.find(o => o.value === settings.whyShopCtaLink)?.label || settings.whyShopCtaLink || 'Select a link...';
+
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setSettings(prev => ({ ...prev, _ctaDropdownOpen: !prev._ctaDropdownOpen, _ctaSearchQuery: '' }))}
+                          className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-left focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium cursor-pointer flex items-center justify-between gap-2"
+                        >
+                          <span className="truncate">{selectedLabel}</span>
+                          <Search className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                        </button>
+
+                        {settings._ctaDropdownOpen && (
+                          <>
+                            {/* Overlay to close on outside click */}
+                            <div className="fixed inset-0 z-30" onClick={() => setSettings(prev => ({ ...prev, _ctaDropdownOpen: false }))} />
+
+                            <div className="absolute z-40 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
+                              {/* Search Input */}
+                              <div className="p-2 border-b border-slate-100">
+                                <div className="relative">
+                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                                  <input
+                                    type="text"
+                                    autoFocus
+                                    placeholder="Search pages & categories..."
+                                    value={settings._ctaSearchQuery || ''}
+                                    onChange={(e) => setSettings(prev => ({ ...prev, _ctaSearchQuery: e.target.value }))}
+                                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Filtered Options */}
+                              <div className="max-h-56 overflow-y-auto">
+                                {(() => {
+                                  const q = (settings._ctaSearchQuery || '').toLowerCase();
+                                  const filtered = allCtaOptions.filter(o => o.label.toLowerCase().includes(q));
+                                  const groups = [...new Set(filtered.map(o => o.group))];
+
+                                  if (filtered.length === 0) {
+                                    return <p className="text-xs text-slate-400 font-medium px-4 py-3 text-center">No results found</p>;
+                                  }
+
+                                  return groups.map(group => (
+                                    <div key={group}>
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-4 pt-2.5 pb-1">
+                                        {group === 'Pages' ? '📄 Pages' : '📦 Categories'}
+                                      </p>
+                                      {filtered.filter(o => o.group === group).map(opt => (
+                                        <button
+                                          key={opt.value}
+                                          type="button"
+                                          onClick={() => {
+                                            setSettings(prev => ({
+                                              ...prev,
+                                              whyShopCtaLink: opt.value,
+                                              _ctaDropdownOpen: false,
+                                              _ctaSearchQuery: ''
+                                            }));
+                                          }}
+                                          className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors cursor-pointer flex items-center gap-2 ${
+                                            settings.whyShopCtaLink === opt.value
+                                              ? 'bg-indigo-50 text-indigo-700 font-bold'
+                                              : 'text-slate-700 hover:bg-slate-50'
+                                          }`}
+                                        >
+                                          <span className="truncate">{opt.label}</span>
+                                          {settings.whyShopCtaLink === opt.value && (
+                                            <CheckCircle className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0 ml-auto" />
+                                          )}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ));
+                                })()}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Trust Line Text (shown next to CTA)</label>
+                  <input
+                    type="text"
+                    name="whyShopTrustLine"
+                    value={settings.whyShopTrustLine || ''}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium"
+                    placeholder="e.g. 1,500+ customers trust us daily"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Counters */}
+            <div className="space-y-4 pt-4 border-t border-slate-100">
+              <h3 className="font-bold text-sm text-indigo-600 border-b border-slate-100 pb-1.5">Stats / Counters (animated numbers)</h3>
+              <div className="space-y-3">
+                {(settings.whyShopStats || []).map((stat, idx) => (
+                  <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveWhyShopStat(idx)}
+                      className="absolute top-3 right-3 text-slate-400 hover:text-rose-500 bg-white hover:bg-rose-50 p-1.5 rounded-lg border border-slate-200 transition-colors shadow-sm opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pr-10">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">Number Value</label>
+                        <input
+                          type="number"
+                          value={stat.value || 0}
+                          onChange={(e) => handleWhyShopStatChange(idx, 'value', e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">Suffix (e.g. +, %, Min)</label>
+                        <input
+                          type="text"
+                          value={stat.suffix || ''}
+                          onChange={(e) => handleWhyShopStatChange(idx, 'suffix', e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium"
+                          placeholder="e.g. +, %, Min"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">Label</label>
+                        <input
+                          type="text"
+                          value={stat.label || ''}
+                          onChange={(e) => handleWhyShopStatChange(idx, 'label', e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium"
+                          placeholder="e.g. Happy Customers"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={handleAddWhyShopStat}
+                  className="w-full py-3 border-2 border-dashed border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Add New Stat Counter
+                </button>
+              </div>
+            </div>
+
+            {/* Feature Cards */}
+            <div className="space-y-4 pt-4 border-t border-slate-100">
+              <h3 className="font-bold text-sm text-indigo-600 border-b border-slate-100 pb-1.5">Feature Cards</h3>
+              <div className="space-y-4">
+                {(settings.whyShopFeatures || []).map((feature, idx) => (
+                  <div key={idx} className="bg-slate-50 p-5 rounded-xl border border-slate-200 relative group">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveWhyShopFeature(idx)}
+                      className="absolute top-3 right-3 text-slate-400 hover:text-rose-500 bg-white hover:bg-rose-50 p-1.5 rounded-lg border border-slate-200 transition-colors shadow-sm opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-10">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">Feature Title</label>
+                        <input
+                          type="text"
+                          value={feature.title || ''}
+                          onChange={(e) => handleWhyShopFeatureChange(idx, 'title', e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium"
+                          placeholder="e.g. Farm Fresh Quality"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-600 mb-1.5">Icon Name</label>
+                          <select
+                            value={feature.iconName || 'Leaf'}
+                            onChange={(e) => handleWhyShopFeatureChange(idx, 'iconName', e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium cursor-pointer"
+                          >
+                            <option value="Leaf">🍃 Leaf</option>
+                            <option value="Truck">🚚 Truck</option>
+                            <option value="BadgePercent">🏷️ Badge Percent</option>
+                            <option value="ShieldCheck">🛡️ Shield Check</option>
+                            <option value="HeartHandshake">🤝 Heart Handshake</option>
+                            <option value="Clock">⏰ Clock</option>
+                            <option value="Star">⭐ Star</option>
+                            <option value="Sparkles">✨ Sparkles</option>
+                            <option value="Package">📦 Package</option>
+                            <option value="Award">🏆 Award</option>
+                            <option value="ThumbsUp">👍 Thumbs Up</option>
+                            <option value="Zap">⚡ Zap</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-600 mb-1.5">Color Theme</label>
+                          <select
+                            value={feature.colorTheme || 'emerald'}
+                            onChange={(e) => handleWhyShopFeatureChange(idx, 'colorTheme', e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium cursor-pointer"
+                          >
+                            <option value="emerald">🟢 Emerald (Green)</option>
+                            <option value="amber">🟡 Amber (Yellow)</option>
+                            <option value="rose">🔴 Rose (Red/Pink)</option>
+                            <option value="sky">🔵 Sky (Blue)</option>
+                            <option value="violet">🟣 Violet (Purple)</option>
+                            <option value="teal">🩵 Teal (Cyan)</option>
+                            <option value="orange">🟠 Orange</option>
+                            <option value="indigo">🔵 Indigo (Deep Blue)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="col-span-1 md:col-span-2">
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">Description</label>
+                        <textarea
+                          value={feature.description || ''}
+                          onChange={(e) => handleWhyShopFeatureChange(idx, 'description', e.target.value)}
+                          rows={2}
+                          className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium"
+                          placeholder="Feature description..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={handleAddWhyShopFeature}
+                  className="w-full py-3 border-2 border-dashed border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Add New Feature Card
+                </button>
+              </div>
             </div>
           </div>
 
