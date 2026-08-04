@@ -111,6 +111,11 @@ export default function Sidebar() {
           name: 'Discount Coupons',
           path: '/dashboard/coupons',
           icon: Ticket
+        },
+        {
+          name: 'Customer Reviews',
+          path: '/dashboard/reviews',
+          icon: Star
         }
       ]
     },

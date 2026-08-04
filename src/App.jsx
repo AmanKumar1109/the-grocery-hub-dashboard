@@ -30,6 +30,7 @@ import AboutUsView from './views/AboutUsView';
 import CancellationPolicyView from './views/CancellationPolicyView';
 import DisclaimerView from './views/DisclaimerView';
 import ShippingPolicyView from './views/ShippingPolicyView';
+import ReviewsView from './views/ReviewsView';
 
 // Admin layout — sidebar + content
 function AdminLayout() {
@@ -58,6 +59,7 @@ function AdminLayout() {
             <Route path="disclaimer" element={<DisclaimerView />} />
             <Route path="shipping-policy" element={<ShippingPolicyView />} />
             <Route path="store-settings" element={<StoreSettingsView />} />
+            <Route path="reviews" element={<ReviewsView />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>
