@@ -67,6 +67,7 @@ export default function StoreSettingsView() {
     twitterUrl: '',
     youtubeUrl: '',
     linkedinUrl: '',
+    minOrderAmount: 100,
     minOrderFreeDelivery: 500,
     deliveryTiers: [
       { maxAmount: 199, fee: 15 },
@@ -2032,6 +2033,27 @@ export default function StoreSettingsView() {
                       />
                     </div>
                     <p className="text-[10px] text-emerald-700 font-medium mt-1">If cart crosses this amount, delivery is FREE.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Minimum Order Value */}
+              <div className="bg-rose-50 p-5 rounded-xl border border-rose-200">
+                <h3 className="text-sm font-bold text-rose-800 mb-4">4. Minimum Order Amount (₹{settings.minOrderAmount || 100})</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-rose-900 mb-1.5">Minimum cart total required (₹)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-600 font-bold">₹</span>
+                      <input
+                        type="number"
+                        name="minOrderAmount"
+                        value={settings.minOrderAmount || ''}
+                        onChange={handleChange}
+                        className="w-full pl-8 pr-4 py-2.5 rounded-xl bg-white border border-rose-300 text-sm focus:ring-2 focus:ring-rose-500 transition-all outline-none font-bold text-rose-900"
+                      />
+                    </div>
+                    <p className="text-[10px] text-rose-700 font-medium mt-1">Customers cannot checkout if their total is below this amount.</p>
                   </div>
                 </div>
               </div>
