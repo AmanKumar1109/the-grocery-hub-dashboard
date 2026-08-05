@@ -585,7 +585,8 @@ export const AdminProvider = ({ children }) => {
     const partner = staff.find(s => s.id === partnerId);
     await updateDoc(doc(db, 'orders', orderId), {
       assignedPartnerId: partnerId || null,
-      assignedPartnerName: partner ? partner.name : 'Unassigned'
+      assignedPartnerName: partner ? partner.name : 'Unassigned',
+      assignedPartnerPhone: partner ? partner.phone : null
     });
 
     if (partner) {
