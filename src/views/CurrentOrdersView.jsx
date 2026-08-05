@@ -592,12 +592,26 @@ export default function CurrentOrdersView() {
                       <Phone className="w-3.5 h-3.5" /> {viewDetailsOrder.customerPhone || 'N/A'}
                     </a>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-4">
                   <div>
                     <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Payment Mode</p>
                     <p className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5 mt-0.5">
                       <CreditCard className="w-3.5 h-3.5 text-amber-500" /> {viewDetailsOrder.paymentMethod || 'Cash on Delivery'}
                     </p>
                   </div>
+                  
+                  {viewDetailsOrder.deliveryOtp && (
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase text-amber-600 tracking-wider flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Delivery OTP
+                      </p>
+                      <p className="text-sm font-black text-slate-900 tracking-[0.2em] font-mono mt-0.5">
+                        {viewDetailsOrder.deliveryOtp}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 

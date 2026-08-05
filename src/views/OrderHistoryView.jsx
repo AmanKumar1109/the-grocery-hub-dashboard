@@ -352,6 +352,17 @@ export default function OrderHistoryView() {
                 </div>
               </div>
 
+              {activeModalOrder.deliveryOtp && (
+                <div className="p-3 bg-amber-50 border border-amber-200/60 rounded-xl">
+                  <p className="font-extrabold uppercase text-[10px] text-amber-600 flex items-center gap-1">
+                    <Lock className="w-3 h-3" /> Delivery OTP
+                  </p>
+                  <p className="text-sm font-black text-slate-900 tracking-[0.2em] font-mono mt-0.5">
+                    {activeModalOrder.deliveryOtp}
+                  </p>
+                </div>
+              )}
+
               {activeModalOrder.status === 'Cancelled' && activeModalOrder.cancelReason && (
                 <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800">
                   <p className="font-bold uppercase text-[10px] text-rose-600">Cancellation Reason</p>
