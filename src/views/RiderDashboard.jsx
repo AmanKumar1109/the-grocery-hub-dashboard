@@ -29,7 +29,9 @@ import {
   Radio,
   Locate,
   Compass,
-  X
+  X,
+  Lock,
+  ShieldCheck
 } from 'lucide-react';
 import DeliveryMapModal from '../components/DeliveryMapModal';
 
@@ -103,6 +105,12 @@ export default function RiderDashboard() {
   const [deliveringId, setDeliveringId] = useState(null); // orderId being delivered
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [mapOrder, setMapOrder] = useState(null);
+
+  // OTP Verification Modal state (Rider side)
+  const [otpModalOrder, setOtpModalOrder] = useState(null);
+  const [riderOtpInput, setRiderOtpInput] = useState('');
+  const [riderOtpError, setRiderOtpError] = useState('');
+  const [riderOtpVerifying, setRiderOtpVerifying] = useState(false);
   
   // Real-time GPS Location sharing state
   const [isSharingGps, setIsSharingGps] = useState(true);
@@ -521,7 +529,11 @@ export default function RiderDashboard() {
                       </button>
 
                       <button
-                        onClick={() => handleMarkDelivered(order)}
+                        onClick={() => {
+                          setRiderOtpInput('');
+                          setRiderOtpError('');
+                          setOtpModalOrder(order);
+                        }}
                         disabled={isDelivering || !canDeliver}
                         className={`w-full py-4 rounded-2xl text-sm font-black flex items-center justify-center gap-2.5 transition-all shadow-lg ${
                           isDelivering
@@ -590,6 +602,113 @@ export default function RiderDashboard() {
             order={mapOrder}
             onClose={() => setMapOrder(null)}
           />
+        )}
+
+        {/* RIDER OTP VERIFICATION MODAL */}
+        {otpModalOrder && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-slate-800 w-full max-w-sm rounded-3xl border border-white/10 shadow-2xl p-6 space-y-5">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-amber-500/20 text-amber-400 rounded-2xl border border-amber-500/30">
+                    <Lock className="w-6 h-6 stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-white">Enter Customer OTP</h3>
+                    <p className="text-xs font-semibold text-slate-400">Order #{otpModalOrder.id}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setOtpModalOrder(null); setRiderOtpInput(''); setRiderOtpError(''); }}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* OTP Input */}
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-slate-300 block">Ask the customer for their Delivery OTP</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={riderOtpInput}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setRiderOtpInput(val);
+                    setRiderOtpError('');
+                  }}
+                  placeholder="Enter 6-digit OTP"
+                  className={`w-full text-center text-2xl font-black tracking-[0.4em] py-4 px-4 rounded-2xl border-2 transition-all focus:outline-none bg-slate-900/60 ${
+                    riderOtpError
+                      ? 'border-rose-500 text-rose-300 focus:ring-4 focus:ring-rose-500/20'
+                      : 'border-slate-600 text-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20'
+                  }`}
+                  autoFocus
+                />
+                {riderOtpError && (
+                  <p className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5" /> {riderOtpError}
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setOtpModalOrder(null); setRiderOtpInput(''); setRiderOtpError(''); }}
+                  disabled={riderOtpVerifying}
+                  className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold text-sm rounded-xl transition-colors cursor-pointer disabled:opacity-50 border border-white/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={riderOtpInput.length !== 6 || riderOtpVerifying}
+                  onClick={async () => {
+                    setRiderOtpVerifying(true);
+                    setRiderOtpError('');
+                    try {
+                      // Verify OTP
+                      if (otpModalOrder.deliveryOtp && riderOtpInput === otpModalOrder.deliveryOtp) {
+                        // Mark rider OTP as verified + deliver immediately
+                        await updateDoc(doc(db, 'orders', otpModalOrder.id), {
+                          riderOtpVerified: true,
+                          deliveryOtpVerified: true
+                        });
+                        await handleMarkDelivered(otpModalOrder);
+                        showToast('✅ OTP verified! Order delivered successfully.', 'success');
+
+                        setOtpModalOrder(null);
+                        setRiderOtpInput('');
+                      } else {
+                        // Wrong OTP
+                        await updateDoc(doc(db, 'orders', otpModalOrder.id), {
+                          otpFailedAttempts: (otpModalOrder.otpFailedAttempts || 0) + 1
+                        });
+                        setRiderOtpError(`Invalid OTP. Ask the customer for the correct OTP. (${(otpModalOrder.otpFailedAttempts || 0) + 1} failed attempts)`);
+                      }
+                    } catch (err) {
+                      console.error('Rider OTP verification error:', err);
+                      setRiderOtpError('Verification failed. Please try again.');
+                    } finally {
+                      setRiderOtpVerifying(false);
+                    }
+                  }}
+                  className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-sm rounded-xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {riderOtpVerifying ? (
+                    <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Verifying...</>
+                  ) : (
+                    <><ShieldCheck className="w-4 h-4" /> Verify</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

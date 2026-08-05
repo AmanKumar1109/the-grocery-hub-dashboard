@@ -12,12 +12,17 @@ import {
   Calendar,
   AlertTriangle,
   Ban,
-  Printer
+  Printer,
+  Lock,
+  AlertCircle,
+  ShieldCheck
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
 import ThermalReceiptModal from '../components/ThermalReceiptModal';
 import gsap from 'gsap';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export default function OrderHistoryView() {
   const { orders, staff, cancelReasonsList, updateOrderStatus, cancelOrder, assignDeliveryPartner } = useAdmin();
@@ -34,6 +39,12 @@ export default function OrderHistoryView() {
 
   // Thermal print modal state
   const [printingOrder, setPrintingOrder] = useState(null);
+
+  // OTP Verification Modal state (OrderHistory admin side)
+  const [otpVerifyOrder, setOtpVerifyOrder] = useState(null);
+  const [adminOtpInput, setAdminOtpInput] = useState('');
+  const [adminOtpError, setAdminOtpError] = useState('');
+  const [adminOtpVerifying, setAdminOtpVerifying] = useState(false);
 
   const tableRef = useRef(null);
 
@@ -204,6 +215,10 @@ export default function OrderHistoryView() {
                             onChange={(e) => {
                               if (e.target.value === 'Cancelled') {
                                 setQuickCancelOrder(order);
+                              } else if (e.target.value === 'Delivered') {
+                                setAdminOtpInput('');
+                                setAdminOtpError('');
+                                setOtpVerifyOrder(order);
                               } else {
                                 updateOrderStatus(order.id, e.target.value);
                               }
@@ -395,6 +410,113 @@ export default function OrderHistoryView() {
                 className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm"
               >
                 Close Modal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN OTP VERIFICATION MODAL (Order History) */}
+      {otpVerifyOrder && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white w-full max-w-sm rounded-3xl border border-slate-200 shadow-2xl p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-amber-100 text-amber-700 rounded-2xl">
+                  <Lock className="w-6 h-6 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">Verify Delivery OTP</h3>
+                  <p className="text-xs font-semibold text-slate-400">Order #{otpVerifyOrder.id}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setOtpVerifyOrder(null); setAdminOtpInput(''); setAdminOtpError(''); }}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-slate-700 block">Enter Customer OTP</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={adminOtpInput}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setAdminOtpInput(val);
+                  setAdminOtpError('');
+                }}
+                placeholder="Enter 6-digit OTP"
+                className={`w-full text-center text-2xl font-black tracking-[0.4em] py-4 px-4 rounded-2xl border-2 transition-all focus:outline-none ${
+                  adminOtpError
+                    ? 'border-rose-400 bg-rose-50/50 text-rose-700 focus:ring-4 focus:ring-rose-400/20'
+                    : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20'
+                }`}
+                autoFocus
+              />
+              {adminOtpError && (
+                <p className="text-xs font-bold text-rose-600 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5" /> {adminOtpError}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => { setOtpVerifyOrder(null); setAdminOtpInput(''); setAdminOtpError(''); }}
+                disabled={adminOtpVerifying}
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={adminOtpInput.length !== 6 || adminOtpVerifying}
+                onClick={async () => {
+                  setAdminOtpVerifying(true);
+                  setAdminOtpError('');
+                  try {
+                    if (otpVerifyOrder.deliveryOtp && adminOtpInput === otpVerifyOrder.deliveryOtp) {
+                      if (otpVerifyOrder.adminOtpVerified) {
+                        setAdminOtpError('Admin has already verified this OTP.');
+                        setAdminOtpVerifying(false);
+                        return;
+                      }
+
+                      // Mark admin OTP as verified + deliver immediately
+                      await updateDoc(doc(db, 'orders', otpVerifyOrder.id), {
+                        adminOtpVerified: true,
+                        deliveryOtpVerified: true
+                      });
+                      await updateOrderStatus(otpVerifyOrder.id, 'Delivered');
+
+                      setOtpVerifyOrder(null);
+                      setAdminOtpInput('');
+                    } else {
+                      await updateDoc(doc(db, 'orders', otpVerifyOrder.id), {
+                        otpFailedAttempts: (otpVerifyOrder.otpFailedAttempts || 0) + 1
+                      });
+                      setAdminOtpError(`Invalid OTP. (${(otpVerifyOrder.otpFailedAttempts || 0) + 1} failed attempts)`);
+                    }
+                  } catch (err) {
+                    console.error('OTP verification error:', err);
+                    setAdminOtpError('Verification failed. Please try again.');
+                  } finally {
+                    setAdminOtpVerifying(false);
+                  }
+                }}
+                className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {adminOtpVerifying ? (
+                  <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Verifying...</>
+                ) : (
+                  <><ShieldCheck className="w-4 h-4" /> Verify</>
+                )}
               </button>
             </div>
           </div>
