@@ -15,7 +15,8 @@ import {
   Printer,
   Lock,
   AlertCircle,
-  ShieldCheck
+  ShieldCheck,
+  Moon
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
@@ -185,7 +186,14 @@ export default function OrderHistoryView() {
                 ) : (
                   filteredOrders.map((order) => (
                     <tr key={order.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-4 px-6 font-bold text-emerald-700">{order.id}</td>
+                      <td className="py-4 px-6 font-bold text-emerald-700">
+                        {order.id}
+                        {order.isNextMorningDelivery && (
+                          <div className="mt-1 flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded w-max shadow-sm">
+                            <Moon className="w-3 h-3" /> Tomorrow Morning
+                          </div>
+                        )}
+                      </td>
                       <td className="py-4 px-6">
                         <p className="font-bold text-slate-800">{order.customerName}</p>
                         <p className="text-[11px] text-slate-400 truncate max-w-xs">

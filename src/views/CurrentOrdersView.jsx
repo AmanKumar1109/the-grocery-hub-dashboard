@@ -21,7 +21,8 @@ import {
   CreditCard,
   Navigation,
   ShieldCheck,
-  Lock
+  Lock,
+  Moon
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
@@ -302,6 +303,11 @@ export default function CurrentOrdersView() {
                         <span className="font-mono font-extrabold text-xs px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100/80">
                           #{order.id}
                         </span>
+                        {order.isNextMorningDelivery && (
+                          <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded-lg shadow-sm">
+                            <Moon className="w-3 h-3" /> Tomorrow Morning
+                          </div>
+                        )}
                         <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
                           <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                           <span>
