@@ -536,21 +536,53 @@ export const AdminProvider = ({ children }) => {
     const order = orders.find(o => o.id === orderId);
     if (order && order.status !== newStatus) {
       let greeting = null;
+      let emailSubject = null;
+      let emailHtml = null;
+      
+      const customerName = order.customerName || 'Customer';
+      
       if (newStatus === 'Order Received' || newStatus === 'Pending') {
         greeting = "✅ Your order has been confirmed. Thank you for shopping with The Grocery Hub! 💚";
+        emailSubject = `Order Confirmed - #${orderId}`;
+        emailHtml = `<h2>Hi ${customerName},</h2><p>Your order <strong>#${orderId}</strong> has been successfully confirmed!</p><p>We will start preparing it soon. Thank you for shopping with The Grocery Hub!</p>`;
       } else if (newStatus === 'Packing' || newStatus === 'Preparing') {
         greeting = "📦 Your order has been packed and is ready for delivery.";
+        emailSubject = `Your Order #${orderId} is being Prepared!`;
+        emailHtml = `<h2>Hi ${customerName},</h2><p>Great news! Your order <strong>#${orderId}</strong> is currently being packed and prepared for dispatch.</p><p>Get ready to receive your groceries soon!</p>`;
       } else if (newStatus === 'Out for Delivery') {
         greeting = "🚚 Your order is on the way. It will arrive soon!";
+        emailSubject = `Your Order #${orderId} is Out for Delivery! 🚚`;
+        emailHtml = `<h2>Hi ${customerName},</h2><p>Your order <strong>#${orderId}</strong> is out for delivery and on its way to you.</p><p>Please keep your phone handy.</p>`;
       } else if (newStatus === 'Delivered') {
         greeting = "🎉 Your order has been delivered successfully. Thank you for shopping with The Grocery Hub! 💚";
+        emailSubject = `Order Delivered! - #${orderId}`;
+        emailHtml = `<h2>Hi ${customerName},</h2><p>Your order <strong>#${orderId}</strong> has been delivered successfully.</p><p>We hope you enjoy your groceries. Thank you for choosing The Grocery Hub!</p>`;
       } else if (newStatus === 'Cancelled') {
         greeting = "❌ Your order has been cancelled. Please contact support if you need any assistance.";
+        emailSubject = `Order Cancelled - #${orderId}`;
+        emailHtml = `<h2>Hi ${customerName},</h2><p>Your order <strong>#${orderId}</strong> has been cancelled.</p><p>Reason: ${reason || 'Not specified'}.</p><p>If you have already paid, your refund will be processed shortly.</p>`;
       }
 
       if (greeting) {
         updateData.greetingMessage = greeting;
         updateData.greetingTimestamp = new Date().toISOString();
+      }
+
+      // Trigger Email via Firebase Extension
+      const targetEmail = order.customerEmail || order.email || order.userEmail;
+      if (targetEmail && emailSubject && emailHtml) {
+        try {
+          await addDoc(collection(db, 'mail'), {
+            to: targetEmail,
+            message: {
+              subject: emailSubject,
+              html: emailHtml
+            }
+          });
+          console.log(`Email notification queued for ${targetEmail}`);
+        } catch (mailErr) {
+          console.error("Failed to queue email notification:", mailErr);
+        }
       }
     }
 
