@@ -320,6 +320,8 @@ export const AdminProvider = ({ children }) => {
   const deleteSubcategory = async (categoryName, subcategoryName) => {
     const catDoc = categoryDocs.find(c => c.name === categoryName);
     if (!catDoc) return false;
+
+    // Remove subcategory from the category doc
     const newSubs = (catDoc.subcategories || []).filter(s => s !== subcategoryName);
     await updateDoc(doc(db, 'categories', catDoc.id), {
       subcategories: newSubs
@@ -765,6 +767,22 @@ export const AdminProvider = ({ children }) => {
     }
   };
 
+  // Bulk delete items using batch write
+  const bulkDeleteItems = async (itemIds) => {
+    try {
+      const batch = writeBatch(db);
+      itemIds.forEach(id => {
+        const itemRef = doc(db, 'items', id);
+        batch.delete(itemRef);
+      });
+      await batch.commit();
+      await addAuditLog('BULK_DELETE_ITEMS', `Bulk deleted ${itemIds.length} items`, 'Admin', 'danger');
+    } catch (error) {
+      console.error("Error bulk deleting items: ", error);
+      throw error;
+    }
+  };
+
   const addCoupon = async (couponData) => {
     try {
       const docRef = await addDoc(collection(db, 'coupons'), {
@@ -828,6 +846,7 @@ export const AdminProvider = ({ children }) => {
       toggleItemStock,
       deleteItem,
       bulkUpdateItems,
+      bulkDeleteItems,
       reorderItemsBatch,
       updateOrderStatus,
       cancelOrder,
