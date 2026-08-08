@@ -21,6 +21,7 @@ import AuditLogsView from './views/AuditLogsView';
 import ComplaintsView from './views/ComplaintsView';
 import UsersView from './views/UsersView';
 import CouponsView from './views/CouponsView';
+import NotificationsView from './views/NotificationsView';
 import RiderDashboard from './views/RiderDashboard';
 import PrivacyPolicyView from './views/PrivacyPolicyView';
 import TermsOfServiceView from './views/TermsOfServiceView';
@@ -48,6 +49,7 @@ function AdminLayout() {
             <Route path="complaints" element={<ComplaintsView />} />
             <Route path="users" element={<UsersView />} />
             <Route path="coupons" element={<CouponsView />} />
+            <Route path="notifications" element={<NotificationsView />} />
             <Route path="staff" element={<StaffView />} />
             <Route path="staff/add" element={<AddStaffView />} />
             <Route path="audit-logs" element={<AuditLogsView />} />

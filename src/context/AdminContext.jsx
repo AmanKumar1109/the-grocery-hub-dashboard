@@ -9,13 +9,15 @@ import {
   updateDoc,
   deleteDoc,
   getDocs,
+  getDoc,
   writeBatch,
   arrayUnion
 } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { DEFAULT_TEMPLATES, EMAIL_WRAPPER, formatOrderItems } from '../utils/emailTemplates';
 
-const AdminContext = createContext();
+export const AdminContext = createContext();
 
 export const useAdmin = () => useContext(AdminContext);
 
@@ -38,6 +40,10 @@ export const AdminProvider = ({ children }) => {
   ];
 
   // Pure Real-time Firestore state
+  const [revenueStats, setRevenueStats] = useState({ daily: 0, weekly: 0, monthly: 0 });
+  
+  // Notification templates
+  const [notificationTemplates, setNotificationTemplates] = useState({});
   const [categories, setCategories] = useState(defaultGroceryCategories);
   const [categoryDocs, setCategoryDocs] = useState([]);
   const [items, setItems] = useState([]);
@@ -58,16 +64,16 @@ export const AdminProvider = ({ children }) => {
       const oldFoodCatIds = ['Burgers', 'Burger', 'Pizza', 'Pizzas', 'Salad', 'Salads', 'Drink', 'Drinks', 'Dessert', 'Desserts', 'Starters', 'Main Course', 'Fast Food'];
 
       for (const id of dummyItemIds) {
-        await deleteDoc(doc(db, 'items', id)).catch(() => {});
+        await deleteDoc(doc(db, 'items', id)).catch(() => { });
       }
       for (const id of dummyStaffIds) {
-        await deleteDoc(doc(db, 'staff', id)).catch(() => {});
+        await deleteDoc(doc(db, 'staff', id)).catch(() => { });
       }
       for (const id of dummyOrderIds) {
-        await deleteDoc(doc(db, 'orders', id)).catch(() => {});
+        await deleteDoc(doc(db, 'orders', id)).catch(() => { });
       }
       for (const id of oldFoodCatIds) {
-        await deleteDoc(doc(db, 'categories', id)).catch(() => {});
+        await deleteDoc(doc(db, 'categories', id)).catch(() => { });
       }
     } catch (err) {
       console.warn("Purge dummy data error:", err);
@@ -80,7 +86,7 @@ export const AdminProvider = ({ children }) => {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) return;
       const ctx = new AudioContextClass();
-      
+
       const osc1 = ctx.createOscillator();
       const osc2 = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -122,108 +128,124 @@ export const AdminProvider = ({ children }) => {
 
   // Subscribe to Firestore Collections Real-time
   useEffect(() => {
-    purgeDummyDataFromFirestore();
+    (async () => {
+      try {
+        purgeDummyDataFromFirestore();
 
-    // Items snapshot
-    const unsubItems = onSnapshot(collection(db, 'items'), (snap) => {
-      const loaded = snap.docs
-        .map(d => ({ id: d.id, isVisible: d.data().isVisible !== false, sortOrder: d.data().sortOrder || 0, ...d.data() }))
-        .filter(item => !['ITEM-101', 'ITEM-102', 'ITEM-103', 'ITEM-104', 'ITEM-105', 'ITEM-106'].includes(item.id))
-        .sort((a, b) => a.sortOrder - b.sortOrder);
-      setItems(loaded);
-      setIsLoading(false);
-    });
+        // Items snapshot
+        const unsubItems = onSnapshot(collection(db, 'items'), (snap) => {
+          const loaded = snap.docs
+            .map(d => ({ id: d.id, isVisible: d.data().isVisible !== false, sortOrder: d.data().sortOrder || 0, ...d.data() }))
+            .filter(item => !['ITEM-101', 'ITEM-102', 'ITEM-103', 'ITEM-104', 'ITEM-105', 'ITEM-106'].includes(item.id))
+            .sort((a, b) => a.sortOrder - b.sortOrder);
+          setItems(loaded);
+          setIsLoading(false);
+        });
 
-    // Categories snapshot
-    const unsubCat = onSnapshot(collection(db, 'categories'), async (snap) => {
-      if (snap.empty) {
-        // Auto-seed default grocery categories
-        for (const catName of defaultGroceryCategories) {
-          await setDoc(doc(db, 'categories', catName), { name: catName, subcategories: [] }).catch(() => {});
+        // Categories snapshot
+        const unsubCat = onSnapshot(collection(db, 'categories'), async (snap) => {
+          if (snap.empty) {
+            // Auto-seed default grocery categories
+            for (const catName of defaultGroceryCategories) {
+              await setDoc(doc(db, 'categories', catName), { name: catName, subcategories: [] }).catch(() => { });
+            }
+            setCategories(defaultGroceryCategories);
+            setCategoryDocs(defaultGroceryCategories.map(name => ({ id: name, name, subcategories: [] })));
+          } else {
+            const loadedCats = snap.docs.map(d => d.data().name || d.id);
+            const docs = snap.docs.map(d => ({ id: d.id, name: d.data().name || d.id, subcategories: d.data().subcategories || [] }));
+            const cleanCats = loadedCats.filter(c => !['Burgers', 'Burger', 'Pizza', 'Pizzas', 'Salad', 'Salads', 'Drink', 'Drinks', 'Dessert', 'Desserts', 'Starters', 'Main Course', 'Fast Food'].includes(c));
+            const cleanDocs = docs.filter(c => cleanCats.includes(c.name));
+            setCategories(cleanCats.length > 0 ? cleanCats : defaultGroceryCategories);
+            setCategoryDocs(cleanDocs.length > 0 ? cleanDocs : defaultGroceryCategories.map(name => ({ id: name, name, subcategories: [] })));
+          }
+        });
+
+        // Staff snapshot
+        const unsubStaff = onSnapshot(collection(db, 'staff'), (snapshot) => {
+          const loadedStaff = snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(s => !['STF-001', 'STF-002', 'STF-003', 'STF-004'].includes(s.id));
+          setStaff(loadedStaff);
+        });
+
+        const unsubCoupons = onSnapshot(collection(db, 'coupons'), (snapshot) => {
+          setCoupons(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+
+        // Orders snapshot with audio ping for new incoming orders
+        let isFirstOrdersLoad = true;
+        const unsubOrders = onSnapshot(collection(db, 'orders'), async (snap) => {
+          const dummyOrderIds = ['ORD-9481', 'ORD-9482', 'ORD-9483', 'ORD-9470', 'ORD-9468', 'ORD-9455'];
+          const loadedOrders = [];
+
+          for (const d of snap.docs) {
+            // Auto-delete ghost orders with random document IDs or Valued Customer placeholder
+            if (!d.id.startsWith('ORD-') || dummyOrderIds.includes(d.id) || d.data().customerName === 'Valued Customer') {
+              await deleteDoc(doc(db, 'orders', d.id)).catch(() => { });
+              continue;
+            }
+            loadedOrders.push({ id: d.id, ...d.data() });
+          }
+
+          loadedOrders.sort((a, b) => getTimeMs(b.createdAt || b.updatedAt) - getTimeMs(a.createdAt || a.updatedAt));
+
+          if (!isFirstOrdersLoad) {
+            const hasNewIncoming = snap.docChanges().some(change => change.type === 'added' && change.doc.id.startsWith('ORD-'));
+            if (hasNewIncoming) {
+              playOrderPingChime();
+            }
+          }
+          isFirstOrdersLoad = false;
+
+          setOrders(loadedOrders);
+        });
+
+        // Audit logs snapshot
+        const unsubLogs = onSnapshot(collection(db, 'auditLogs'), (snap) => {
+          const loadedLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          loadedLogs.sort((a, b) => getTimeMs(b.timestamp) - getTimeMs(a.timestamp));
+          setAuditLogs(loadedLogs);
+        });
+
+        // Complaints snapshot
+        const unsubComplaints = onSnapshot(collection(db, 'complaints'), (snap) => {
+          const loadedComplaints = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          loadedComplaints.sort((a, b) => getTimeMs(b.createdAt) - getTimeMs(a.createdAt));
+          setComplaints(loadedComplaints);
+        });
+
+        // Users / Customers snapshot
+        const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
+          const loadedUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          loadedUsers.sort((a, b) => getTimeMs(b.createdAt) - getTimeMs(a.createdAt));
+          setUsers(loadedUsers);
+        });
+
+        // Fetch notification templates
+        const notifDoc = await getDoc(doc(db, 'settings', 'notifications'));
+        if (notifDoc.exists()) {
+          setNotificationTemplates(notifDoc.data().templates || DEFAULT_TEMPLATES);
+        } else {
+          // Initialize if it doesn't exist
+          await setDoc(doc(db, 'settings', 'notifications'), { templates: DEFAULT_TEMPLATES });
+          setNotificationTemplates(DEFAULT_TEMPLATES);
         }
-        setCategories(defaultGroceryCategories);
-        setCategoryDocs(defaultGroceryCategories.map(name => ({ id: name, name, subcategories: [] })));
-      } else {
-        const loadedCats = snap.docs.map(d => d.data().name || d.id);
-        const docs = snap.docs.map(d => ({ id: d.id, name: d.data().name || d.id, subcategories: d.data().subcategories || [] }));
-        const cleanCats = loadedCats.filter(c => !['Burgers', 'Burger', 'Pizza', 'Pizzas', 'Salad', 'Salads', 'Drink', 'Drinks', 'Dessert', 'Desserts', 'Starters', 'Main Course', 'Fast Food'].includes(c));
-        const cleanDocs = docs.filter(c => cleanCats.includes(c.name));
-        setCategories(cleanCats.length > 0 ? cleanCats : defaultGroceryCategories);
-        setCategoryDocs(cleanDocs.length > 0 ? cleanDocs : defaultGroceryCategories.map(name => ({ id: name, name, subcategories: [] })));
+
+        return () => {
+          unsubCat();
+          unsubItems();
+          unsubStaff();
+          unsubOrders();
+          unsubComplaints();
+          unsubUsers();
+          unsubLogs();
+          unsubCoupons();
+        };
+      } catch (err) {
+        console.error("Initialization error:", err);
       }
-    });
-
-    // Staff snapshot
-    const unsubStaff = onSnapshot(collection(db, 'staff'), (snapshot) => {
-      const loadedStaff = snapshot.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(s => !['STF-001', 'STF-002', 'STF-003', 'STF-004'].includes(s.id));
-      setStaff(loadedStaff);
-    });
-
-    const unsubCoupons = onSnapshot(collection(db, 'coupons'), (snapshot) => {
-      setCoupons(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-
-    // Orders snapshot with audio ping for new incoming orders
-    let isFirstOrdersLoad = true;
-    const unsubOrders = onSnapshot(collection(db, 'orders'), async (snap) => {
-      const dummyOrderIds = ['ORD-9481', 'ORD-9482', 'ORD-9483', 'ORD-9470', 'ORD-9468', 'ORD-9455'];
-      const loadedOrders = [];
-
-      for (const d of snap.docs) {
-        // Auto-delete ghost orders with random document IDs or Valued Customer placeholder
-        if (!d.id.startsWith('ORD-') || dummyOrderIds.includes(d.id) || d.data().customerName === 'Valued Customer') {
-          await deleteDoc(doc(db, 'orders', d.id)).catch(() => {});
-          continue;
-        }
-        loadedOrders.push({ id: d.id, ...d.data() });
-      }
-
-      loadedOrders.sort((a, b) => getTimeMs(b.createdAt || b.updatedAt) - getTimeMs(a.createdAt || a.updatedAt));
-
-      if (!isFirstOrdersLoad) {
-        const hasNewIncoming = snap.docChanges().some(change => change.type === 'added' && change.doc.id.startsWith('ORD-'));
-        if (hasNewIncoming) {
-          playOrderPingChime();
-        }
-      }
-      isFirstOrdersLoad = false;
-
-      setOrders(loadedOrders);
-    });
-
-    // Audit logs snapshot
-    const unsubLogs = onSnapshot(collection(db, 'auditLogs'), (snap) => {
-      const loadedLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      loadedLogs.sort((a, b) => getTimeMs(b.timestamp) - getTimeMs(a.timestamp));
-      setAuditLogs(loadedLogs);
-    });
-
-    // Complaints snapshot
-    const unsubComplaints = onSnapshot(collection(db, 'complaints'), (snap) => {
-      const loadedComplaints = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      loadedComplaints.sort((a, b) => getTimeMs(b.createdAt) - getTimeMs(a.createdAt));
-      setComplaints(loadedComplaints);
-    });
-
-    // Users / Customers snapshot
-    const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
-      const loadedUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      loadedUsers.sort((a, b) => getTimeMs(b.createdAt) - getTimeMs(a.createdAt));
-      setUsers(loadedUsers);
-    });
-
-    return () => {
-      unsubCat();
-      unsubItems();
-      unsubStaff();
-      unsubOrders();
-      unsubComplaints();
-      unsubUsers();
-      unsubLogs();
-      unsubCoupons();
-    };
+    })();
   }, []);
 
   // Preset Order Cancellation Reasons
@@ -302,7 +324,7 @@ export const AdminProvider = ({ children }) => {
   const addSubcategory = async (categoryName, subcategoryName) => {
     const trimmed = subcategoryName.trim();
     if (!trimmed) return false;
-    
+
     const catRef = doc(db, 'categories', categoryName);
     try {
       await updateDoc(catRef, {
@@ -333,7 +355,7 @@ export const AdminProvider = ({ children }) => {
   const renameSubcategory = async (categoryName, oldSubcategoryName, newSubcategoryName) => {
     const trimmedNew = newSubcategoryName.trim();
     if (!trimmedNew || oldSubcategoryName === trimmedNew) return false;
-    
+
     const catDoc = categoryDocs.find(c => c.name === categoryName);
     if (!catDoc) return false;
     if (catDoc.subcategories && catDoc.subcategories.some(s => s.toLowerCase() === trimmedNew.toLowerCase())) return false;
@@ -376,7 +398,7 @@ export const AdminProvider = ({ children }) => {
 
     // 2. Find all items in the old category and update them
     const itemsToUpdate = items.filter(i => i.category === oldName);
-    
+
     if (itemsToUpdate.length > 0) {
       const batch = writeBatch(db);
       // Firestore batches support up to 500 operations. We'll assume < 500 items per category for now.
@@ -397,7 +419,7 @@ export const AdminProvider = ({ children }) => {
   // Actions for Items & Visibility Toggle
   const addItem = async (newItem) => {
     let finalCategory = newItem.category && newItem.category.trim() ? newItem.category.trim() : 'General';
-    
+
     // Case-insensitive match to prevent duplicate categories from Excel imports
     const existingMatch = categories.find(c => c.toLowerCase() === finalCategory.toLowerCase());
     if (existingMatch) {
@@ -537,32 +559,74 @@ export const AdminProvider = ({ children }) => {
 
     const order = orders.find(o => o.id === orderId);
     if (order && order.status !== newStatus) {
-      let greeting = null;
-      let emailSubject = null;
-      let emailHtml = null;
+      let greeting = '';
+      let emailSubject = '';
+      let emailHtml = '';
+
+      const customerName = order.address?.name || 'Customer';
       
-      const customerName = order.customerName || 'Customer';
-      
-      if (newStatus === 'Order Received' || newStatus === 'Pending') {
-        greeting = "✅ Your order has been confirmed. Thank you for shopping with The Grocery Hub! 💚";
-        emailSubject = `Order Confirmed - #${orderId}`;
-        emailHtml = `<h2>Hi ${customerName},</h2><p>Your order <strong>#${orderId}</strong> has been successfully confirmed!</p><p>We will start preparing it soon. Thank you for shopping with The Grocery Hub!</p>`;
-      } else if (newStatus === 'Packing' || newStatus === 'Preparing') {
-        greeting = "📦 Your order has been packed and is ready for delivery.";
-        emailSubject = `Your Order #${orderId} is being Prepared!`;
-        emailHtml = `<h2>Hi ${customerName},</h2><p>Great news! Your order <strong>#${orderId}</strong> is currently being packed and prepared for dispatch.</p><p>Get ready to receive your groceries soon!</p>`;
-      } else if (newStatus === 'Out for Delivery') {
-        greeting = "🚚 Your order is on the way. It will arrive soon!";
-        emailSubject = `Your Order #${orderId} is Out for Delivery! 🚚`;
-        emailHtml = `<h2>Hi ${customerName},</h2><p>Your order <strong>#${orderId}</strong> is out for delivery and on its way to you.</p><p>Please keep your phone handy.</p>`;
+      const prepareEmailParams = (templateKey) => {
+        const template = notificationTemplates[templateKey];
+        if (!template) return null;
+        
+        const formatMoney = (amt) => Number(amt).toFixed(2);
+        const formatAddress = (addr) => {
+          if (!addr) return 'N/A';
+          if (typeof addr === 'string') return addr;
+          const street = addr.street || addr.flatName || '';
+          const locality = addr.locality || addr.area || '';
+          const city = addr.city || '';
+          const pin = addr.pincode || '';
+          return [street, locality, city].filter(Boolean).join(', ') + (pin ? ` - ${pin}` : '');
+        };
+        const formatTime = (ts) => ts ? new Date(ts.seconds ? ts.seconds * 1000 : ts).toLocaleString() : 'N/A';
+
+        const rawBody = template.body || '';
+        
+        let replacedHtmlBody = rawBody.replace(/\n/g, '<br>');
+        replacedHtmlBody = replacedHtmlBody
+          .replace(/\[Customer Name\]/gi, customerName)
+          .replace(/\[Order ID\]/gi, orderId)
+          .replace(/\[Amount\]/gi, formatMoney(order.totalAmount))
+          .replace(/\[Address\]/gi, formatAddress(order.address))
+          .replace(/\[Time\]/gi, formatTime(order.createdAt))
+          .replace(/\[Cancel Reason\]/gi, reason || 'Not specified')
+          .replace(/\[Order Items?\]/gi, formatOrderItems(order.items || [], order.totalAmount, formatAddress(order.address)));
+
+        return {
+          subject: template.subject.replace(/\[Order ID\]/g, orderId),
+          html: EMAIL_WRAPPER(replacedHtmlBody)
+        };
+      };
+
+      if (newStatus === 'Prepared' || newStatus === 'Preparing' || newStatus === 'Packing') {
+        greeting = "📦 Your order is being packed!";
+        const params = prepareEmailParams('Prepared');
+        if (params) {
+          emailSubject = params.subject;
+          emailHtml = params.html;
+        }
+      } else if (newStatus === 'Out for delivery' || newStatus === 'Out for Delivery') {
+        greeting = "🛵 Your order is out for delivery!";
+        const params = prepareEmailParams('Out for delivery');
+        if (params) {
+          emailSubject = params.subject;
+          emailHtml = params.html;
+        }
       } else if (newStatus === 'Delivered') {
-        greeting = "🎉 Your order has been delivered successfully. Thank you for shopping with The Grocery Hub! 💚";
-        emailSubject = `Order Delivered! - #${orderId}`;
-        emailHtml = `<h2>Hi ${customerName},</h2><p>Your order <strong>#${orderId}</strong> has been delivered successfully.</p><p>We hope you enjoy your groceries. Thank you for choosing The Grocery Hub!</p>`;
+        greeting = "✅ Your order has been delivered!";
+        const params = prepareEmailParams('Delivered');
+        if (params) {
+          emailSubject = params.subject;
+          emailHtml = params.html;
+        }
       } else if (newStatus === 'Cancelled') {
         greeting = "❌ Your order has been cancelled. Please contact support if you need any assistance.";
-        emailSubject = `Order Cancelled - #${orderId}`;
-        emailHtml = `<h2>Hi ${customerName},</h2><p>Your order <strong>#${orderId}</strong> has been cancelled.</p><p>Reason: ${reason || 'Not specified'}.</p><p>If you have already paid, your refund will be processed shortly.</p>`;
+        const params = prepareEmailParams('Cancelled');
+        if (params) {
+          emailSubject = params.subject;
+          emailHtml = params.html;
+        }
       }
 
       if (greeting) {
@@ -599,7 +663,22 @@ export const AdminProvider = ({ children }) => {
   };
 
   const cancelOrder = async (orderId, reason) => {
+    // Calling updateOrderStatus directly to ensure emails are triggered properly for cancellation
     await updateOrderStatus(orderId, 'Cancelled', reason);
+  };
+
+  const updateNotificationTemplates = async (newTemplates) => {
+    try {
+      await updateDoc(doc(db, 'settings', 'notifications'), {
+        templates: newTemplates
+      });
+      setNotificationTemplates(newTemplates);
+      await addAuditLog('NOTIFICATIONS_UPDATED', `Updated email notification templates`, 'Settings', 'info');
+      return true;
+    } catch (err) {
+      console.error("Error updating templates:", err);
+      return false;
+    }
   };
 
   const sendDelayNotification = async (orderId, message) => {
@@ -689,7 +768,7 @@ export const AdminProvider = ({ children }) => {
     if (adminReply !== null) {
       updateData.adminReply = adminReply;
     }
-    
+
     await updateDoc(doc(db, 'complaints', complaintId), updateData);
     await addAuditLog('COMPLAINT_STATUS_UPDATE', `Updated status of Complaint #${complaintId} to "${newStatus}"`, 'Support', 'info');
   };
@@ -751,7 +830,7 @@ export const AdminProvider = ({ children }) => {
     // itemsData is array of { id, updates }
     try {
       const batch = writeBatch(db);
-      
+
       itemsData.forEach(data => {
         const itemRef = doc(db, 'items', data.id);
         batch.update(itemRef, {
@@ -866,7 +945,10 @@ export const AdminProvider = ({ children }) => {
       coupons,
       addCoupon,
       toggleCouponStatus,
-      deleteCoupon
+      deleteCoupon,
+      cancelOrder,
+      notificationTemplates,
+      updateNotificationTemplates
     }}>
       {children}
     </AdminContext.Provider>
