@@ -576,6 +576,7 @@ export const AdminProvider = ({ children }) => {
         try {
           await addDoc(collection(db, 'mail'), {
             to: targetEmail,
+            from: '"The Grocery Hub" <ghoshabhijit1295@gmail.com>',
             message: {
               subject: emailSubject,
               html: emailHtml
