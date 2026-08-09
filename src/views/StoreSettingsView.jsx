@@ -594,6 +594,16 @@ export default function StoreSettingsView() {
     }
   };
 
+  // Instantly save the active theme to Firestore without pressing the main Save button
+  const handleThemeChange = async (themeKey) => {
+    setSettings(prev => ({ ...prev, activeTheme: themeKey }));
+    try {
+      await setDoc(SETTINGS_DOC_REF, { activeTheme: themeKey }, { merge: true });
+    } catch (err) {
+      console.error('Failed to save theme:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
@@ -645,7 +655,127 @@ export default function StoreSettingsView() {
         )}
 
         <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
+
+          {/* ============================================================
+              🎨 SITE THEME SELECTOR
+              Instant save — no need to press the Save button
+              ============================================================ */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-5 md:col-span-2">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
+              <span className="text-xl">🎨</span>
+              <div>
+                <h2 className="text-base font-bold text-slate-800">Site Theme</h2>
+                <p className="text-xs text-slate-400 font-medium">Instantly changes the entire website's color scheme. No save button needed.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Normal Theme */}
+              <button
+                type="button"
+                onClick={() => handleThemeChange('normal')}
+                className={`relative rounded-2xl border-2 overflow-hidden cursor-pointer transition-all text-left ${
+                  (settings.activeTheme || 'normal') === 'normal'
+                    ? 'border-emerald-500 shadow-lg shadow-emerald-100'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                {/* Preview strip */}
+                <div className="h-16 bg-gradient-to-r from-amber-400 to-green-500 flex items-center justify-center gap-2">
+                  <span className="text-2xl">🛒</span>
+                  <div className="flex gap-1">
+                    <div className="w-3 h-3 rounded-full bg-amber-200" />
+                    <div className="w-3 h-3 rounded-full bg-white" />
+                    <div className="w-3 h-3 rounded-full bg-green-200" />
+                  </div>
+                </div>
+                <div className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">Normal</p>
+                      <p className="text-xs text-slate-400">Default amber + green</p>
+                    </div>
+                    {(settings.activeTheme || 'normal') === 'normal' && (
+                      <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                        <CheckCircle className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </button>
+
+              {/* Independence Day Theme */}
+              <button
+                type="button"
+                onClick={() => handleThemeChange('independence-day')}
+                className={`relative rounded-2xl border-2 overflow-hidden cursor-pointer transition-all text-left ${
+                  settings.activeTheme === 'independence-day'
+                    ? 'border-orange-500 shadow-lg shadow-orange-100'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                {/* Preview: tricolor strip */}
+                <div className="h-16 flex">
+                  <div className="flex-1 bg-[#FF9933] flex items-center justify-center"><span className="text-lg">🇮🇳</span></div>
+                  <div className="flex-1 bg-white flex items-center justify-center"><span className="text-lg font-black text-[#000080] text-xs">JAI</span></div>
+                  <div className="flex-1 bg-[#138808] flex items-center justify-center"><span className="text-xs font-black text-white">HIND</span></div>
+                </div>
+                <div className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">Independence Day 🇮🇳</p>
+                      <p className="text-xs text-slate-400">Saffron + White + Green</p>
+                    </div>
+                    {settings.activeTheme === 'independence-day' && (
+                      <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                        <CheckCircle className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </button>
+
+              {/* Diwali Theme */}
+              <button
+                type="button"
+                onClick={() => handleThemeChange('diwali')}
+                className={`relative rounded-2xl border-2 overflow-hidden cursor-pointer transition-all text-left ${
+                  settings.activeTheme === 'diwali'
+                    ? 'border-amber-600 shadow-lg shadow-amber-100'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                {/* Preview: warm diwali gradient */}
+                <div className="h-16 bg-gradient-to-r from-[#7c2d12] via-[#b45309] to-[#92400e] flex items-center justify-center gap-2">
+                  <span className="text-2xl">🪔</span>
+                  <div className="flex gap-1">
+                    <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                    <div className="w-3 h-3 rounded-full bg-orange-300" />
+                    <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                  </div>
+                  <span className="text-2xl">🪔</span>
+                </div>
+                <div className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">Diwali 🪔</p>
+                      <p className="text-xs text-slate-400">Gold + Maroon festive</p>
+                    </div>
+                    {settings.activeTheme === 'diwali' && (
+                      <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                        <CheckCircle className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 font-medium text-center">
+              ⚡ Theme changes are applied instantly across the user site — no page refresh needed.
+            </p>
+          </div>
+
           {/* Hero Section Settings */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6 md:col-span-2">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
