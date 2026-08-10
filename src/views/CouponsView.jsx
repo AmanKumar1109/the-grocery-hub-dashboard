@@ -50,6 +50,8 @@ export default function CouponsView() {
         discountValue: val,
         minOrderValue: parseFloat(formData.minOrderValue) || 0,
         maxDiscount: parseFloat(formData.maxDiscount) || 0,
+        isGlobal: true,
+        isReferralCoupon: false
       });
 
       setFormData({

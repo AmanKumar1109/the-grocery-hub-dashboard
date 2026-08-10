@@ -11,7 +11,9 @@ import {
   getDocs,
   getDoc,
   writeBatch,
-  arrayUnion
+  arrayUnion,
+  query,
+  where
 } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -169,7 +171,7 @@ export const AdminProvider = ({ children }) => {
           setStaff(loadedStaff);
         });
 
-        const unsubCoupons = onSnapshot(collection(db, 'coupons'), (snapshot) => {
+        const unsubCoupons = onSnapshot(query(collection(db, 'coupons'), where('isGlobal', '==', true)), (snapshot) => {
           setCoupons(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
         });
 
