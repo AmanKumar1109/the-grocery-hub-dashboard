@@ -6,6 +6,7 @@ import Header from '../components/Header';
 
 export default function ReferralsView() {
   const [referrals, setReferrals] = useState([]);
+  const [usersCache, setUsersCache] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -23,6 +24,24 @@ export default function ReferralsView() {
     }
   };
 
+  // Fetch users for name mapping
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'users'));
+        const map = {};
+        snap.forEach(doc => {
+          const d = doc.data();
+          map[doc.id] = d.fullName || d.name || d.email || 'Unknown User';
+        });
+        setUsersCache(map);
+      } catch (err) {
+        console.error("Failed to fetch users cache", err);
+      }
+    };
+    fetchUsers();
+  }, []);
+
   useEffect(() => {
     const q = query(collection(db, 'referrals'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snap) => {
@@ -37,7 +56,9 @@ export default function ReferralsView() {
     const matchesSearch = 
       ref.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
       ref.referrerId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ref.referredUserId.toLowerCase().includes(searchTerm.toLowerCase());
+      ref.referredUserId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (usersCache[ref.referrerId] && usersCache[ref.referrerId].toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (usersCache[ref.referredUserId] && usersCache[ref.referredUserId].toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesStatus = statusFilter === 'ALL' || ref.status === statusFilter;
     
@@ -131,8 +152,14 @@ export default function ReferralsView() {
                       <td className="px-5 py-4">
                         <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md">{ref.id}</span>
                       </td>
-                      <td className="px-5 py-4 text-sm font-semibold text-slate-800 truncate max-w-[120px]">{ref.referrerId}</td>
-                      <td className="px-5 py-4 text-sm font-semibold text-slate-800 truncate max-w-[120px]">{ref.referredUserId}</td>
+                      <td className="px-5 py-4 truncate max-w-[150px]">
+                        <div className="text-sm font-semibold text-slate-800">{usersCache[ref.referrerId] || 'Unknown'}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">{ref.referrerId}</div>
+                      </td>
+                      <td className="px-5 py-4 truncate max-w-[150px]">
+                        <div className="text-sm font-semibold text-slate-800">{usersCache[ref.referredUserId] || 'Unknown'}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">{ref.referredUserId}</div>
+                      </td>
                       <td className="px-5 py-4 text-xs font-medium text-slate-500">
                         {ref.createdAt ? formatDateTime(ref.createdAt.toDate()) : '-'}
                       </td>
@@ -188,11 +215,13 @@ export default function ReferralsView() {
                 <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                   <div>
                     <p className="text-xs font-black uppercase text-slate-400">Referrer</p>
-                    <p className="text-sm font-bold text-slate-800">{selectedReferral.referrerId}</p>
+                    <p className="text-sm font-bold text-slate-800">{usersCache[selectedReferral.referrerId] || 'Unknown'}</p>
+                    <p className="text-[10px] font-mono text-slate-400">{selectedReferral.referrerId}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs font-black uppercase text-slate-400">Referred User</p>
-                    <p className="text-sm font-bold text-slate-800">{selectedReferral.referredUserId}</p>
+                    <p className="text-sm font-bold text-slate-800">{usersCache[selectedReferral.referredUserId] || 'Unknown'}</p>
+                    <p className="text-[10px] font-mono text-slate-400">{selectedReferral.referredUserId}</p>
                   </div>
                 </div>
 
