@@ -72,7 +72,8 @@ export default function CouponsView() {
     }
   };
 
-  const activeCount = coupons.filter(c => c.isActive).length;
+  const globalCoupons = coupons.filter(c => !c.isReferralCoupon && !c.userId);
+  const activeCount = globalCoupons.filter(c => c.isActive).length;
 
   return (
     <div className="flex-1 flex flex-col bg-slate-50/50 min-h-screen">
@@ -88,7 +89,7 @@ export default function CouponsView() {
             </div>
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Coupons</p>
-              <p className="text-2xl font-black text-slate-800">{coupons.length}</p>
+              <p className="text-2xl font-black text-slate-800">{globalCoupons.length}</p>
             </div>
           </div>
           <div className="bg-white px-5 py-4 rounded-2xl border border-slate-200 shadow-sm flex-1 flex items-center gap-4">
@@ -231,7 +232,7 @@ export default function CouponsView() {
               <Tag className="w-4 h-4 text-slate-400" /> Existing Coupons
             </h3>
             
-            {coupons.length === 0 ? (
+            {globalCoupons.length === 0 ? (
               <div className="bg-white rounded-3xl border border-slate-200 border-dashed p-12 flex flex-col items-center justify-center text-center">
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                   <Ticket className="w-8 h-8 text-slate-300" />
@@ -241,7 +242,7 @@ export default function CouponsView() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {coupons.map(coupon => (
+                {globalCoupons.map(coupon => (
                   <div 
                     key={coupon.id} 
                     className={`coupon-card relative bg-white p-5 rounded-3xl border ${coupon.isActive ? 'border-emerald-200 shadow-sm' : 'border-slate-200 opacity-60'} overflow-hidden transition-all`}
