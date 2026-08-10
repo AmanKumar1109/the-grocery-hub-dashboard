@@ -18,7 +18,8 @@ import {
   Image,
   Star,
   Bell,
-  Mail
+  Mail,
+  Gift
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import { useAuth } from '../context/AuthContext';
@@ -114,6 +115,11 @@ export default function Sidebar() {
           name: 'Discount Coupons',
           path: '/dashboard/coupons',
           icon: Ticket
+        },
+        {
+          name: 'Referral Management',
+          path: '/dashboard/referrals',
+          icon: Gift
         },
         {
           name: 'Notifications',

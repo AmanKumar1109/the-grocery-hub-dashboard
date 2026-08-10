@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
+  collection,
+  query,
+  where,
+  getDocs
+} from 'firebase/firestore';
+import { db } from '../firebase';
+import {
   Users,
   Search,
   Eye,
@@ -31,7 +38,8 @@ import {
   ShieldCheck,
   StickyNote,
   BarChart2,
-  Save
+  Save,
+  Gift
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
@@ -700,6 +708,42 @@ function SelectedUserModal({ user, onClose, savedProducts, savedLoading, items, 
   const [isBlocking, setIsBlocking] = useState(false);
   const [noteText, setNoteText] = useState(user.adminNote || '');
   const [isSavingNote, setIsSavingNote] = useState(false);
+  
+  // Referral states
+  const [referrals, setReferrals] = useState({ referredBy: null, referralsMade: [] });
+  const [loadingReferrals, setLoadingReferrals] = useState(true);
+
+  useEffect(() => {
+    async function fetchReferrals() {
+      if (!user.isFromFirestore || !user.id) {
+        setLoadingReferrals(false);
+        return;
+      }
+      try {
+        const referredByQuery = query(collection(db, 'referrals'), where('referredUserId', '==', user.id));
+        const madeQuery = query(collection(db, 'referrals'), where('referrerId', '==', user.id));
+        
+        const [referredBySnap, madeSnap] = await Promise.all([
+          getDocs(referredByQuery),
+          getDocs(madeQuery)
+        ]);
+
+        let referredBy = null;
+        if (!referredBySnap.empty) {
+          referredBy = referredBySnap.docs[0].data().referrerId;
+        }
+
+        const referralsMade = madeSnap.docs.map(doc => doc.data());
+        
+        setReferrals({ referredBy, referralsMade });
+      } catch (err) {
+        console.error('Error fetching referrals:', err);
+      } finally {
+        setLoadingReferrals(false);
+      }
+    }
+    fetchReferrals();
+  }, [user.id, user.isFromFirestore]);
 
   const handleSaveNote = async () => {
     setIsSavingNote(true);
@@ -876,6 +920,41 @@ function SelectedUserModal({ user, onClose, savedProducts, savedLoading, items, 
                   <p className="text-xl font-black text-blue-600">₹{user.totalSavings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                 </div>
               </div>
+
+              {/* Referral Summary Stats */}
+              {user.isFromFirestore && (
+                <div className="bg-amber-50/40 p-4 rounded-2xl border border-amber-200/60 space-y-3 relative group mt-4">
+                  <h4 className="text-xs font-black text-amber-900 flex items-center justify-between uppercase tracking-wider">
+                    <div className="flex items-center gap-1.5">
+                      <Gift className="w-3.5 h-3.5 text-amber-600" /> Referral Program
+                    </div>
+                  </h4>
+                  {loadingReferrals ? (
+                    <div className="flex justify-center p-2"><Loader2 className="w-4 h-4 text-amber-400 animate-spin" /></div>
+                  ) : (
+                    <div className="space-y-3">
+                      {referrals.referredBy && (
+                        <div className="bg-white p-2.5 rounded-xl border border-amber-100 flex justify-between items-center text-xs">
+                          <span className="font-bold text-slate-500">Referred By:</span>
+                          <span className="font-black text-amber-700">{referrals.referredBy}</span>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-white p-2.5 rounded-xl border border-amber-100 flex flex-col justify-center items-center">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Referrals Made</span>
+                          <span className="text-lg font-black text-slate-800">{referrals.referralsMade.length}</span>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-xl border border-amber-100 flex flex-col justify-center items-center">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Successful</span>
+                          <span className="text-lg font-black text-emerald-600">
+                            {referrals.referralsMade.filter(r => r.status === 'REWARDED').length}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Monthly Spending Graph */}
               {user.totalOrders > 0 && (

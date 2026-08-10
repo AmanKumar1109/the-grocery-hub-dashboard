@@ -32,6 +32,7 @@ import CancellationPolicyView from './views/CancellationPolicyView';
 import DisclaimerView from './views/DisclaimerView';
 import ShippingPolicyView from './views/ShippingPolicyView';
 import ReviewsView from './views/ReviewsView';
+import ReferralsView from './views/ReferralsView';
 
 // Admin layout — sidebar + content
 function AdminLayout() {
@@ -48,6 +49,7 @@ function AdminLayout() {
             <Route path="orders/history" element={<OrderHistoryView />} />
             <Route path="complaints" element={<ComplaintsView />} />
             <Route path="users" element={<UsersView />} />
+            <Route path="referrals" element={<ReferralsView />} />
             <Route path="coupons" element={<CouponsView />} />
             <Route path="notifications" element={<NotificationsView />} />
             <Route path="staff" element={<StaffView />} />
