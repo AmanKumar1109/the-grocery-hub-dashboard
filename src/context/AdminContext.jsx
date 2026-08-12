@@ -550,7 +550,7 @@ export const AdminProvider = ({ children }) => {
 
   // Actions for Orders
   const updateOrderStatus = async (orderId, newStatus, reason = null) => {
-    const isCurrent = ['Pending', 'Preparing', 'Out for Delivery'].includes(newStatus);
+    const isCurrent = !['Delivered', 'Cancelled', 'Payment Failed', 'Pending Payment'].includes(newStatus);
     const updateData = {
       status: newStatus,
       isCurrent

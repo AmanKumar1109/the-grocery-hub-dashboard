@@ -23,7 +23,7 @@ export default function DashboardView() {
   const { earnings, orders, items, staff, complaints = [] } = useAdmin();
   const containerRef = useRef(null);
 
-  const activeOrders = orders.filter(o => o.isCurrent);
+  const activeOrders = orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled' && o.status !== 'Pending Payment' && o.status !== 'Payment Failed');
   const deliveredToday = orders.filter(o => o.status === 'Delivered');
   const pendingComplaints = complaints.filter(c => c.status === 'pending' || !c.status);
 

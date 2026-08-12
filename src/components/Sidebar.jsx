@@ -38,7 +38,7 @@ export default function Sidebar() {
     }
   };
 
-  const currentOrdersCount = orders.filter(o => o.isCurrent).length;
+  const currentOrdersCount = orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled' && o.status !== 'Pending Payment' && o.status !== 'Payment Failed').length;
   const pendingComplaintsCount = complaints.filter(c => c.status === 'pending' || !c.status).length;
 
   const navSections = [

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Save, Loader2, Phone, Mail, Share2, Globe, Link as LinkIcon, Truck, Receipt, CheckCircle, AlertTriangle, Plus, Trash2, Star, Megaphone, Search, X, Sparkles, Table, RefreshCw, ListOrdered, ChevronUp, ChevronDown } from 'lucide-react';
+import { Save, Loader2, Phone, Mail, Share2, Globe, Link as LinkIcon, Truck, Receipt, CheckCircle, AlertTriangle, Plus, Trash2, Star, Megaphone, Search, X, Sparkles, Table, RefreshCw, ListOrdered, ChevronUp, ChevronDown, Gift } from 'lucide-react';
 import ImageUploadInput from '../components/ImageUploadInput';
 import { useAdmin } from '../context/AdminContext';
 
@@ -186,7 +186,13 @@ export default function StoreSettingsView() {
           { id: 11, label: 'Privacy Policy', url: '/privacy-policy' }
         ]
       }
-    ]
+    ],
+    referralCampaignActive: true,
+    referrerRewardAmount: 30,
+    referredUserRewardAmount: 30,
+    referralMinOrderValue: 299,
+    referralCouponMinOrderValue: 100,
+    referralCouponValidityDays: 30
   });
 
   useEffect(() => {
@@ -774,6 +780,83 @@ export default function StoreSettingsView() {
             <p className="text-xs text-slate-400 font-medium text-center">
               ⚡ Theme changes are applied instantly across the user site — no page refresh needed.
             </p>
+          </div>
+
+          {/* ============================================================
+              🎁 REFERRAL CAMPAIGN SETTINGS
+              ============================================================ */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6 md:col-span-2">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
+              <Gift className="w-5 h-5 text-indigo-500" />
+              <h2 className="text-base font-bold text-slate-800">Referral Campaign Settings</h2>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  name="referralCampaignActive" 
+                  checked={settings.referralCampaignActive ?? true} 
+                  onChange={handleChange} 
+                  className="sr-only peer" 
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+              </label>
+              <span className="text-sm font-bold text-slate-700">Campaign Active</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Referrer Reward Amount (₹)</label>
+                <input
+                  type="number"
+                  name="referrerRewardAmount"
+                  value={settings.referrerRewardAmount ?? 30}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Referred User Reward Amount (₹)</label>
+                <input
+                  type="number"
+                  name="referredUserRewardAmount"
+                  value={settings.referredUserRewardAmount ?? 30}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Referral Minimum Order Value (₹)</label>
+                <input
+                  type="number"
+                  name="referralMinOrderValue"
+                  value={settings.referralMinOrderValue ?? 299}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Coupon Validity (Days)</label>
+                <input
+                  type="number"
+                  name="referralCouponValidityDays"
+                  value={settings.referralCouponValidityDays ?? 30}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Coupon Min Order Value (₹)</label>
+                <input
+                  type="number"
+                  name="referralCouponMinOrderValue"
+                  value={settings.referralCouponMinOrderValue ?? 100}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Hero Section Settings */}

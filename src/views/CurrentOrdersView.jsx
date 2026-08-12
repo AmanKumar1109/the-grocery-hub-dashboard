@@ -136,7 +136,12 @@ export default function CurrentOrdersView() {
     return { exact, relative };
   };
 
-  const currentOrders = orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled');
+  const currentOrders = orders.filter(o => 
+    o.status !== 'Delivered' && 
+    o.status !== 'Cancelled' && 
+    o.status !== 'Pending Payment' && 
+    o.status !== 'Payment Failed'
+  );
 
   const filteredOrders = currentOrders.filter(order => {
     if (filterStatus === 'All') return true;
