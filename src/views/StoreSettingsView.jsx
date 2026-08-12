@@ -192,7 +192,10 @@ export default function StoreSettingsView() {
     referredUserRewardAmount: 30,
     referralMinOrderValue: 299,
     referralCouponMinOrderValue: 100,
-    referralCouponValidityDays: 30
+    referralCouponValidityDays: 30,
+    referralBannerTitle: 'Refer Friends, Earn Rewards!',
+    referralBannerDescription: 'Invite your friends to The Grocery Hub. They get ₹{friendRewardAmount} OFF on their first order, and you earn exciting reward coupons!',
+    referralBannerButton: 'Start Earning'
   });
 
   useEffect(() => {
@@ -855,6 +858,42 @@ export default function StoreSettingsView() {
                   onChange={handleChange}
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
                 />
+              </div>
+            </div>
+            
+            <div className="pt-4 border-t border-slate-100">
+              <h3 className="text-sm font-bold text-slate-800 mb-4">Homepage Banner Content</h3>
+              <div className="grid grid-cols-1 gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Banner Title</label>
+                  <input
+                    type="text"
+                    name="referralBannerTitle"
+                    value={settings.referralBannerTitle ?? 'Refer Friends, Earn Rewards!'}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Banner Description (Use {'{friendRewardAmount}'} for dynamic value)</label>
+                  <textarea
+                    name="referralBannerDescription"
+                    value={settings.referralBannerDescription ?? 'Invite your friends to The Grocery Hub. They get ₹{friendRewardAmount} OFF on their first order, and you earn exciting reward coupons!'}
+                    onChange={handleChange}
+                    rows="2"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium resize-none"
+                  ></textarea>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Button Text</label>
+                  <input
+                    type="text"
+                    name="referralBannerButton"
+                    value={settings.referralBannerButton ?? 'Start Earning'}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
+                  />
+                </div>
               </div>
             </div>
           </div>
