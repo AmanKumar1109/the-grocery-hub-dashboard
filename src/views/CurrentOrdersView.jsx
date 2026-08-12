@@ -424,9 +424,27 @@ export default function CurrentOrdersView() {
                         })}
                       </div>
 
-                      <div className="pt-2 border-t border-slate-200/70 flex justify-between items-center text-xs font-bold text-slate-900">
-                        <span className="text-slate-500">Total Payable</span>
-                        <span className="text-emerald-700 text-base font-extrabold">₹{(order.totalAmount || 0).toFixed(2)}</span>
+                      <div className="pt-2 border-t border-slate-200/70 space-y-1.5">
+                        <div className="flex justify-between items-center text-[11px] font-medium text-slate-500">
+                          <span>Items Total</span>
+                          <span>₹{(order.subTotal || order.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.qty || item.quantity || 1)), 0) || 0).toFixed(2)}</span>
+                        </div>
+                        {parseFloat(order.deliveryFee || 0) > 0 && (
+                          <div className="flex justify-between items-center text-[11px] font-medium text-slate-500">
+                            <span>Delivery Fee</span>
+                            <span>+ ₹{parseFloat(order.deliveryFee || 0).toFixed(2)}</span>
+                          </div>
+                        )}
+                        {parseFloat(order.discountAmount || 0) > 0 && (
+                          <div className="flex justify-between items-center text-[11px] font-medium text-emerald-600">
+                            <span>Coupon ({order.couponApplied || 'Discount'})</span>
+                            <span>- ₹{parseFloat(order.discountAmount || 0).toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="pt-1.5 mt-1.5 border-t border-slate-200/70 flex justify-between items-center text-xs font-bold text-slate-900">
+                          <span className="text-slate-600">Total Payable</span>
+                          <span className="text-emerald-700 text-base font-extrabold">₹{(order.totalAmount || 0).toFixed(2)}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
