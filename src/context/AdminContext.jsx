@@ -659,6 +659,33 @@ export const AdminProvider = ({ children }) => {
 
     if (newStatus === 'Cancelled') {
       await addAuditLog('ORDER_CANCELLED', `Cancelled Order #${orderId}. Reason: "${reason || 'Unspecified'}"`, 'Orders', 'danger');
+      
+      // Restore inventory
+      if (order && order.items && Array.isArray(order.items)) {
+        for (const item of order.items) {
+          if (item.id) {
+            try {
+              const prodRef = doc(db, 'items', item.id);
+              const prodSnap = await getDoc(prodRef);
+              if (prodSnap.exists()) {
+                const data = prodSnap.data();
+                if (data.maxQuantity !== undefined && data.maxQuantity !== null && data.maxQuantity !== "") {
+                  let currentMax = parseInt(data.maxQuantity, 10);
+                  if (!isNaN(currentMax)) {
+                    let newMax = currentMax + (item.quantity || item.qty || 1);
+                    await updateDoc(prodRef, {
+                      maxQuantity: String(newMax),
+                      inStock: true
+                    });
+                  }
+                }
+              }
+            } catch (err) {
+              console.error("Error restoring inventory for item:", err);
+            }
+          }
+        }
+      }
     } else {
       await addAuditLog('ORDER_STATUS_UPDATE', `Updated Order #${orderId} status to "${newStatus}"`, 'Orders', 'info');
     }

@@ -23,7 +23,8 @@ export default function AddItemView() {
     isTrending: false,
     isBogo: false,
     image: '',
-    unit: ''
+    unit: '',
+    maxQuantity: ''
   });
 
   // Calculate off percentage live
@@ -267,6 +268,18 @@ export default function AddItemView() {
                   <option value="true">In Stock (Available)</option>
                   <option value="false">Out of Stock (Unavailable)</option>
                 </select>
+              </div>
+
+              {/* Max Order Quantity */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-2">Max Order Quantity (Per User)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 5 (Leave empty for no limit)"
+                  value={formData.maxQuantity}
+                  onChange={e => setFormData({ ...formData, maxQuantity: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
               </div>
 
               {/* Trending Product Toggle Selector */}

@@ -109,7 +109,8 @@ export default function ItemsView() {
     inStock: true,
     isTrending: false,
     image: '',
-    unit: ''
+    unit: '',
+    maxQuantity: ''
   });
 
   const listRef = useRef(null);
@@ -210,7 +211,8 @@ export default function ItemsView() {
       isTrending: !!item.isTrending,
       isBogo: !!item.isBogo,
       image: item.image,
-      unit: item.unit || ''
+      unit: item.unit || '',
+      maxQuantity: item.maxQuantity !== undefined ? item.maxQuantity : ''
     });
   };
 
@@ -1078,11 +1080,23 @@ export default function ItemsView() {
                   <select
                     value={editFormData.inStock ? 'true' : 'false'}
                     onChange={e => setEditFormData({ ...editFormData, inStock: e.target.value === 'true' })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500 text-xs font-semibold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   >
-                    <option value="true">In Stock</option>
-                    <option value="false">Out of Stock</option>
+                    <option value="true">In Stock (Available)</option>
+                    <option value="false">Out of Stock (Unavailable)</option>
                   </select>
+                </div>
+
+                {/* Max Order Quantity */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-2">Max Order Quantity (Per User)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 5 (Leave empty for no limit)"
+                    value={editFormData.maxQuantity}
+                    onChange={e => setEditFormData({ ...editFormData, maxQuantity: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
                 </div>
 
                 <div>
