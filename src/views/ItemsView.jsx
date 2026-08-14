@@ -968,8 +968,8 @@ export default function ItemsView() {
       {/* EDIT ITEM MODAL */}
       {editingItem && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white w-full max-w-lg rounded-2xl border border-slate-200 shadow-2xl p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 shadow-2xl p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 sticky top-0 bg-white z-10 -mx-2 px-2">
               <h2 className="text-lg font-bold text-slate-800">Edit Item Details</h2>
               <button onClick={() => setEditingItem(null)} className="p-1 text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -1171,7 +1171,7 @@ export default function ItemsView() {
                 </div>
               )}
 
-              <div className="pt-4 flex justify-end gap-3">
+              <div className="pt-3 flex justify-end gap-3 sticky bottom-0 bg-white z-10 -mx-2 px-2 pb-1 border-t border-slate-100 mt-4">
                 <button
                   type="button"
                   onClick={() => setEditingItem(null)}
