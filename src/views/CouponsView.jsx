@@ -20,6 +20,7 @@ export default function CouponsView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState('all');
 
   // Animate on load
   React.useEffect(() => {
@@ -96,6 +97,10 @@ export default function CouponsView() {
 
   const personalCoupons = coupons.filter(c => {
     if (!c.userId) return false;
+    
+    if (filterType === 'referral' && !c.isReferralCoupon) return false;
+    if (filterType === 'admin' && c.isReferralCoupon) return false;
+    
     const assignedUser = users.find(u => u.id === c.userId);
     if (!matchesSearch(assignedUser, c.userId)) return false;
     
@@ -110,6 +115,10 @@ export default function CouponsView() {
   
   const usedPersonalCoupons = coupons.filter(c => {
     if (!c.userId) return false;
+    
+    if (filterType === 'referral' && !c.isReferralCoupon) return false;
+    if (filterType === 'admin' && c.isReferralCoupon) return false;
+    
     const assignedUser = users.find(u => u.id === c.userId);
     if (!matchesSearch(assignedUser, c.userId)) return false;
     
@@ -362,13 +371,22 @@ export default function CouponsView() {
                 <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                   <Tag className="w-4 h-4 text-emerald-400" /> Personal Coupons
                 </h3>
-                <div className="w-full sm:w-72">
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                  <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="w-full sm:w-48 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500 shadow-sm"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="referral">Referral Reward</option>
+                    <option value="admin">Admin Assigned</option>
+                  </select>
                   <input
                     type="text"
                     placeholder="Search user (Name, Email, Phone)..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 shadow-sm"
+                    className="w-full sm:w-64 bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 shadow-sm"
                   />
                 </div>
               </div>
