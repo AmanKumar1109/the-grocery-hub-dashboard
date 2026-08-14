@@ -5,7 +5,7 @@ import { Ticket, Plus, Tag, Trash2, Power, PowerOff, Percent, FileDigit, Calenda
 import gsap from 'gsap';
 
 export default function CouponsView() {
-  const { coupons, addCoupon, toggleCouponStatus, deleteCoupon } = useAdmin();
+  const { coupons, users, addCoupon, toggleCouponStatus, deleteCoupon } = useAdmin();
   
   const [formData, setFormData] = useState({
     code: '',
@@ -14,10 +14,12 @@ export default function CouponsView() {
     minOrderValue: '',
     maxDiscount: '', // only applicable if percentage
     validUntil: '',
+    userId: '',
     isActive: true
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Animate on load
   React.useEffect(() => {
@@ -50,12 +52,13 @@ export default function CouponsView() {
         discountValue: val,
         minOrderValue: parseFloat(formData.minOrderValue) || 0,
         maxDiscount: parseFloat(formData.maxDiscount) || 0,
-        isGlobal: true,
+        isGlobal: formData.userId ? false : true,
+        userId: formData.userId || null,
         isReferralCoupon: false
       });
 
       setFormData({
-        code: '', discountType: 'flat', discountValue: '', minOrderValue: '', maxDiscount: '', validUntil: '', isActive: true
+        code: '', discountType: 'flat', discountValue: '', minOrderValue: '', maxDiscount: '', validUntil: '', userId: '', isActive: true
       });
     } catch (err) {
       setFormError(err.message);
@@ -74,7 +77,50 @@ export default function CouponsView() {
     }
   };
 
-  const globalCoupons = coupons.filter(c => !c.isReferralCoupon && !c.userId);
+  const globalCoupons = coupons.filter(c => !c.isReferralCoupon && !c.userId).filter(c => 
+    (c.code || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const matchesSearch = (assignedUser, userId) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    if (assignedUser) {
+      return (
+        (assignedUser.fullName || assignedUser.name || '').toLowerCase().includes(q) ||
+        (assignedUser.email || '').toLowerCase().includes(q) ||
+        (assignedUser.phone || '').toLowerCase().includes(q)
+      );
+    }
+    return (userId || '').toLowerCase().includes(q);
+  };
+
+  const personalCoupons = coupons.filter(c => {
+    if (!c.userId) return false;
+    const assignedUser = users.find(u => u.id === c.userId);
+    if (!matchesSearch(assignedUser, c.userId)) return false;
+    
+    if (assignedUser && assignedUser.usedCoupons) {
+      const isUsed = Array.isArray(assignedUser.usedCoupons)
+        ? (assignedUser.usedCoupons.includes(c.id) || assignedUser.usedCoupons.includes(c.code))
+        : (typeof assignedUser.usedCoupons === 'string' && (assignedUser.usedCoupons.includes(c.id) || assignedUser.usedCoupons.includes(c.code)));
+      if (isUsed) return false;
+    }
+    return true;
+  });
+  
+  const usedPersonalCoupons = coupons.filter(c => {
+    if (!c.userId) return false;
+    const assignedUser = users.find(u => u.id === c.userId);
+    if (!matchesSearch(assignedUser, c.userId)) return false;
+    
+    if (assignedUser && assignedUser.usedCoupons) {
+      return Array.isArray(assignedUser.usedCoupons)
+        ? (assignedUser.usedCoupons.includes(c.id) || assignedUser.usedCoupons.includes(c.code))
+        : (typeof assignedUser.usedCoupons === 'string' && (assignedUser.usedCoupons.includes(c.id) || assignedUser.usedCoupons.includes(c.code)));
+    }
+    return false;
+  });
+
   const activeCount = globalCoupons.filter(c => c.isActive).length;
 
   return (
@@ -215,6 +261,22 @@ export default function CouponsView() {
                   </div>
                 </div>
 
+                <div>
+                  <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider block mb-1.5">Assign to Customer (Optional)</label>
+                  <select
+                    value={formData.userId}
+                    onChange={e => setFormData({ ...formData, userId: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 font-bold focus:ring-2 focus:ring-emerald-500 text-sm"
+                  >
+                    <option value="">Global Coupon (All Users)</option>
+                    {users.filter(u => !u.isBlocked).map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.fullName || u.name || 'Unnamed User'} ({u.email || u.phone || u.id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="pt-2">
                   <button
                     type="submit"
@@ -291,6 +353,157 @@ export default function CouponsView() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Personal Coupons List */}
+            <div className="mt-8">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-emerald-400" /> Personal Coupons
+                </h3>
+                <div className="w-full sm:w-72">
+                  <input
+                    type="text"
+                    placeholder="Search user (Name, Email, Phone)..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 shadow-sm"
+                  />
+                </div>
+              </div>
+              
+              {personalCoupons.length === 0 ? (
+                <div className="bg-white rounded-3xl border border-slate-200 border-dashed p-8 flex flex-col items-center justify-center text-center">
+                  <p className="text-sm text-slate-500">
+                    {searchQuery ? 'No coupons match this user.' : 'No personal coupons assigned yet.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
+                    {personalCoupons.map(coupon => {
+                      const assignedUser = users.find(u => u.id === coupon.userId);
+                      return (
+                        <div 
+                          key={coupon.id} 
+                          className={`coupon-card relative bg-white p-5 rounded-3xl border ${coupon.isActive ? 'border-emerald-200 shadow-sm' : 'border-slate-200 opacity-60'} overflow-hidden transition-all`}
+                        >
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 bg-slate-50 rounded-full border-r border-slate-200"></div>
+                          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-4 h-4 bg-slate-50 rounded-full border-l border-slate-200"></div>
+                          
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex flex-col gap-1.5">
+                              <div className={`px-3 py-1 w-fit rounded-lg text-xs font-black tracking-widest ${coupon.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                                {coupon.code}
+                              </div>
+                              {coupon.isReferralCoupon ? (
+                                <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-wider rounded border border-blue-100 w-fit">Referral Reward</span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-purple-50 text-purple-600 text-[9px] font-black uppercase tracking-wider rounded border border-purple-100 w-fit">Admin Assigned</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => handleToggle(coupon)}
+                                className={`p-1.5 rounded-lg transition-colors ${coupon.isActive ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+                                title={coupon.isActive ? 'Pause Coupon' : 'Activate Coupon'}
+                              >
+                                {coupon.isActive ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                              </button>
+                              <button 
+                                onClick={() => handleDelete(coupon)}
+                                className="p-1.5 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-lg transition-colors"
+                                title="Delete Coupon"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1 mb-3">
+                            <h4 className="text-xl font-black text-slate-900">
+                              {coupon.discountType === 'flat' ? `₹${coupon.discountValue} OFF` : `${coupon.discountValue}% OFF`}
+                            </h4>
+                            <p className="text-xs font-bold text-slate-500">
+                              On orders above ₹{coupon.minOrderValue}
+                              {coupon.discountType === 'percentage' && coupon.maxDiscount > 0 && ` • Up to ₹${coupon.maxDiscount}`}
+                            </p>
+                          </div>
+                          
+                          <div className="mb-4 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase">Assigned To:</p>
+                            <p className="text-xs font-black text-slate-800 truncate">
+                              {assignedUser ? `${assignedUser.fullName || assignedUser.name || 'User'} (${assignedUser.email || assignedUser.phone})` : coupon.userId}
+                            </p>
+                          </div>
+
+                          <div className="pt-4 border-t border-slate-100 border-dashed flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Valid Till: {new Date(coupon.validUntil).toLocaleDateString()}</span>
+                            <span className={coupon.isActive ? 'text-amber-500' : 'text-slate-400'}>{coupon.isActive ? 'ACTIVE' : 'PAUSED'}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Used/Redeemed Personal Coupons List */}
+            {usedPersonalCoupons.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-4">
+                  <Tag className="w-4 h-4 text-slate-300" /> Used / Redeemed Coupons
+                </h3>
+                
+                <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
+                    {usedPersonalCoupons.map(coupon => {
+                      const assignedUser = users.find(u => u.id === coupon.userId);
+                      return (
+                        <div 
+                          key={coupon.id} 
+                          className="coupon-card relative bg-slate-50 p-5 rounded-3xl border border-slate-200 overflow-hidden"
+                        >
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 bg-white rounded-full border-r border-slate-200"></div>
+                          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-4 h-4 bg-white rounded-full border-l border-slate-200"></div>
+                        
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex flex-col gap-1.5">
+                              <div className="px-3 py-1 w-fit rounded-lg text-xs font-black tracking-widest bg-slate-200 text-slate-500 line-through">
+                                {coupon.code}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="px-2 py-0.5 bg-rose-50 text-rose-600 text-[9px] font-black uppercase tracking-wider rounded border border-rose-100 w-fit">
+                                  Already Used
+                                </span>
+                                {coupon.isReferralCoupon ? (
+                                  <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-wider rounded border border-blue-100 w-fit">Referral Reward</span>
+                                ) : (
+                                  <span className="px-2 py-0.5 bg-purple-50 text-purple-600 text-[9px] font-black uppercase tracking-wider rounded border border-purple-100 w-fit">Admin Assigned</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1 mb-3 opacity-60">
+                            <h4 className="text-xl font-black text-slate-700">
+                              {coupon.discountType === 'flat' ? `₹${coupon.discountValue} OFF` : `${coupon.discountValue}% OFF`}
+                            </h4>
+                          </div>
+                          
+                          <div className="mb-4 bg-white p-2 rounded-lg border border-slate-200 opacity-70">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">Redeemed By:</p>
+                            <p className="text-xs font-black text-slate-600 truncate">
+                              {assignedUser ? `${assignedUser.fullName || assignedUser.name || 'User'} (${assignedUser.email || assignedUser.phone})` : coupon.userId}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
           </div>

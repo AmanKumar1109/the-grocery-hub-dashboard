@@ -172,7 +172,7 @@ export const AdminProvider = ({ children }) => {
           setStaff(loadedStaff);
         });
 
-        const unsubCoupons = onSnapshot(query(collection(db, 'coupons'), where('isGlobal', '==', true)), (snapshot) => {
+        const unsubCoupons = onSnapshot(collection(db, 'coupons'), (snapshot) => {
           setCoupons(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
         });
 

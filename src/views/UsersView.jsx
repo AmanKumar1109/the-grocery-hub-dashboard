@@ -45,8 +45,17 @@ import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
 import gsap from 'gsap';
 
+// Helper to parse dates safely
+const getTimeMs = (val) => {
+  if (!val) return 0;
+  if (typeof val.toMillis === 'function') return val.toMillis();
+  if (val.seconds) return val.seconds * 1000;
+  const t = new Date(val).getTime();
+  return isNaN(t) ? 0 : t;
+};
+
 export default function UsersView() {
-  const { users, orders, items, getUserSavedProducts, toggleUserBlockStatus, updateUserAdminNote } = useAdmin();
+  const { users, orders, items, getUserSavedProducts, toggleUserBlockStatus, updateUserAdminNote, coupons } = useAdmin();
   const containerRef = useRef(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -143,6 +152,7 @@ export default function UsersView() {
         lastOrderStatus: '',
         ordersList: [],
         isFromFirestore: true,
+        usedCoupons: u.usedCoupons || [],
         savedFromDoc: u.savedProducts || u.wishlist || u.favorites || u.savedItems || []
       };
 
@@ -198,6 +208,7 @@ export default function UsersView() {
           ordersList: [],
           isFromFirestore: false,
           isBlocked: false,
+          usedCoupons: [],
           savedFromDoc: []
         };
 
@@ -304,11 +315,11 @@ export default function UsersView() {
     // Sort
     result.sort((a, b) => {
       switch (sortBy) {
-        case 'newest': return (b.createdAt || '').localeCompare(a.createdAt || '');
-        case 'oldest': return (a.createdAt || '').localeCompare(b.createdAt || '');
+        case 'newest': return getTimeMs(b.createdAt) - getTimeMs(a.createdAt);
+        case 'oldest': return getTimeMs(a.createdAt) - getTimeMs(b.createdAt);
         case 'most-orders': return b.totalOrders - a.totalOrders;
         case 'highest-spend': return b.totalSpent - a.totalSpent;
-        case 'name-az': return (a.name || '').localeCompare(b.name || '');
+        case 'name-az': return String(a.name || '').localeCompare(String(b.name || ''));
         default: return 0;
       }
     });
@@ -536,7 +547,7 @@ export default function UsersView() {
                   <th className="py-3.5 px-6">Joined</th>
                   <th className="py-3.5 px-6">Orders</th>
                   <th className="py-3.5 px-6">Total Spent (₹)</th>
-                  <th className="py-3.5 px-6">Savings (₹)</th>
+                  <th className="py-3.5 px-6">Coupons</th>
                   <th className="py-3.5 px-6">Last Order</th>
                   <th className="py-3.5 px-6">Status</th>
                   <th className="py-3.5 px-6 text-right">Actions</th>
@@ -556,6 +567,20 @@ export default function UsersView() {
                 ) : (
                   filteredUsers.map((user) => {
                     const isActive = user.totalOrders > 0;
+                    
+                    const userCoupons = coupons ? coupons.filter(c => c.userId === user.id) : [];
+                    const unusedCoupons = userCoupons.filter(c => {
+                      const isUsed = Array.isArray(user.usedCoupons)
+                        ? (user.usedCoupons.includes(c.id) || user.usedCoupons.includes(c.code))
+                        : (typeof user.usedCoupons === 'string' && (user.usedCoupons.includes(c.id) || user.usedCoupons.includes(c.code)));
+                      return !isUsed && c.isActive && (!c.validUntil || new Date(c.validUntil) >= new Date());
+                    });
+                    const totalCouponValue = unusedCoupons.reduce((sum, c) => {
+                      if (c.discountType === 'flat') return sum + Number(c.discountValue);
+                      if (c.discountType === 'percentage' && c.maxDiscount) return sum + Number(c.maxDiscount);
+                      return sum;
+                    }, 0);
+
                     return (
                       <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
                         {/* Customer Name & Avatar */}
@@ -619,11 +644,20 @@ export default function UsersView() {
                           ₹{user.totalSpent.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
 
-                        {/* Savings */}
+                        {/* Coupons */}
                         <td className="py-4 px-6">
-                          <span className={`font-bold ${user.totalSavings > 0 ? 'text-emerald-600' : 'text-slate-300'}`}>
-                            {user.totalSavings > 0 ? `₹${user.totalSavings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
-                          </span>
+                          {unusedCoupons.length > 0 ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-xs font-bold text-slate-800">
+                                {unusedCoupons.length} Active
+                              </span>
+                              <span className="text-[10px] font-bold text-purple-600">
+                                Value: ₹{totalCouponValue}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-300 font-bold">—</span>
+                          )}
                         </td>
 
                         {/* Last Order Date */}
@@ -697,6 +731,8 @@ export default function UsersView() {
           getStatusBadge={getStatusBadge}
           toggleUserBlockStatus={toggleUserBlockStatus}
           updateUserAdminNote={updateUserAdminNote}
+          coupons={coupons}
+          filteredUsers={filteredUsers}
         />
       )}
     </div>
@@ -704,7 +740,9 @@ export default function UsersView() {
 }
 
 // Separated modal component for clarity
-function SelectedUserModal({ user, onClose, savedProducts, savedLoading, items, formatDate, formatDateTime, getStatusBadge, toggleUserBlockStatus, updateUserAdminNote }) {
+function SelectedUserModal({ user: initialUser, onClose, savedProducts, savedLoading, items, formatDate, formatDateTime, getStatusBadge, toggleUserBlockStatus, updateUserAdminNote, coupons, filteredUsers }) {
+  const user = (filteredUsers && initialUser?.id) ? (filteredUsers.find(u => u.id === initialUser.id) || initialUser) : initialUser;
+  if (!user) return null;
   const [isBlocking, setIsBlocking] = useState(false);
   const [noteText, setNoteText] = useState(user.adminNote || '');
   const [isSavingNote, setIsSavingNote] = useState(false);
@@ -782,6 +820,41 @@ function SelectedUserModal({ user, onClose, savedProducts, savedLoading, items, 
       percent: (months[label] / maxVal) * 100
     }));
   }, [user.ordersList]);
+
+  // Coupon Stats
+  const userCoupons = useMemo(() => {
+    if (!coupons) return [];
+    return coupons.filter(c => c.userId === user.id);
+  }, [coupons, user.id]);
+
+  const unusedCoupons = useMemo(() => {
+    return userCoupons.filter(c => {
+      const isUsed = Array.isArray(user.usedCoupons) 
+        ? (user.usedCoupons.includes(c.id) || user.usedCoupons.includes(c.code))
+        : (typeof user.usedCoupons === 'string' && (user.usedCoupons.includes(c.id) || user.usedCoupons.includes(c.code)));
+      return !isUsed && c.isActive && (!c.validUntil || new Date(c.validUntil) >= new Date());
+    });
+  }, [userCoupons, user.usedCoupons]);
+
+  const usedCouponsList = useMemo(() => {
+    return userCoupons.filter(c => {
+      return Array.isArray(user.usedCoupons) 
+        ? (user.usedCoupons.includes(c.id) || user.usedCoupons.includes(c.code))
+        : (typeof user.usedCoupons === 'string' && (user.usedCoupons.includes(c.id) || user.usedCoupons.includes(c.code)));
+    });
+  }, [userCoupons, user.usedCoupons]);
+
+  const totalCouponValue = useMemo(() => {
+    return unusedCoupons.reduce((sum, c) => {
+      if (c.discountType === 'flat') {
+        return sum + Number(c.discountValue);
+      }
+      if (c.discountType === 'percentage' && c.maxDiscount) {
+        return sum + Number(c.maxDiscount); // Max potential value
+      }
+      return sum;
+    }, 0);
+  }, [unusedCoupons]);
 
   const handleBlockToggle = async () => {
     setIsBlocking(true);
@@ -936,7 +1009,11 @@ function SelectedUserModal({ user, onClose, savedProducts, savedLoading, items, 
                       {referrals.referredBy && (
                         <div className="bg-white p-2.5 rounded-xl border border-amber-100 flex justify-between items-center text-xs">
                           <span className="font-bold text-slate-500">Referred By:</span>
-                          <span className="font-black text-amber-700">{referrals.referredBy}</span>
+                          <span className="font-black text-amber-700">
+                            {filteredUsers?.find(u => u.id === referrals.referredBy)?.name || 
+                             filteredUsers?.find(u => u.id === referrals.referredBy)?.fullName || 
+                             referrals.referredBy}
+                          </span>
                         </div>
                       )}
                       <div className="grid grid-cols-2 gap-2">
@@ -951,10 +1028,86 @@ function SelectedUserModal({ user, onClose, savedProducts, savedLoading, items, 
                           </span>
                         </div>
                       </div>
+                      {referrals.referralsMade.length > 0 && (
+                        <div className="mt-3 bg-white rounded-xl border border-amber-100 p-2 text-xs">
+                          <p className="font-bold text-slate-400 uppercase text-[10px] mb-2 px-1">Referred Users</p>
+                          <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
+                            {referrals.referralsMade.map((r, i) => {
+                              const referredUser = filteredUsers?.find(u => u.id === r.referredUserId);
+                              const name = referredUser ? (referredUser.name || referredUser.fullName) : r.referredUserId;
+                              return (
+                                <div key={i} className="flex justify-between items-center bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                                  <span className="font-bold text-slate-700 truncate max-w-[150px]">{name}</span>
+                                  <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${r.status === 'REWARDED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                    {r.status || 'Pending'}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               )}
+
+              {/* Coupons & Rewards */}
+              <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-200/60 space-y-3 relative group mt-4">
+                <h4 className="text-xs font-black text-emerald-900 flex items-center justify-between uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-emerald-600" /> Coupons & Rewards
+                  </div>
+                </h4>
+                
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-white p-2 rounded-xl border border-emerald-100 flex flex-col justify-center items-center">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Available</span>
+                    <span className="text-base font-black text-slate-800">{unusedCoupons.length}</span>
+                  </div>
+                  <div className="bg-white p-2 rounded-xl border border-slate-200 flex flex-col justify-center items-center">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Used</span>
+                    <span className="text-base font-black text-slate-500">{usedCouponsList.length}</span>
+                  </div>
+                  <div className="bg-white p-2 rounded-xl border border-emerald-100 flex flex-col justify-center items-center">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Value</span>
+                    <span className="text-base font-black text-emerald-600">₹{totalCouponValue}</span>
+                  </div>
+                </div>
+
+                {userCoupons.length > 0 && (
+                  <div className="mt-3 space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                    {userCoupons.map(c => {
+                      const isUsed = Array.isArray(user.usedCoupons) 
+                        ? (user.usedCoupons.includes(c.id) || user.usedCoupons.includes(c.code))
+                        : (typeof user.usedCoupons === 'string' && (user.usedCoupons.includes(c.id) || user.usedCoupons.includes(c.code)));
+                      const isExpired = c.validUntil && new Date(c.validUntil) < new Date();
+                      
+                      return (
+                      <div key={c.id} className={`bg-white p-2.5 rounded-lg border flex justify-between items-center ${isUsed ? 'border-slate-200 opacity-60' : 'border-emerald-100'}`}>
+                        <div>
+                          <span className={`text-[10px] font-black tracking-widest uppercase block ${isUsed ? 'text-slate-500 line-through' : 'text-emerald-700'}`}>{c.code}</span>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[9px] text-slate-500 font-bold">
+                              {c.discountType === 'flat' ? `₹${c.discountValue} OFF` : `${c.discountValue}% OFF`}
+                            </span>
+                            {isUsed ? (
+                              <span className="text-[8px] font-black text-rose-500 uppercase tracking-widest">Used</span>
+                            ) : isExpired ? (
+                              <span className="text-[8px] font-black text-rose-500 uppercase tracking-widest">Expired</span>
+                            ) : null}
+                          </div>
+                        </div>
+                        {c.isReferralCoupon ? (
+                          <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[8px] font-black uppercase tracking-wider rounded border border-blue-100">Referral</span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 bg-purple-50 text-purple-600 text-[8px] font-black uppercase tracking-wider rounded border border-purple-100">Admin</span>
+                        )}
+                      </div>
+                    )})}
+                  </div>
+                )}
+              </div>
 
               {/* Monthly Spending Graph */}
               {user.totalOrders > 0 && (
@@ -1140,7 +1293,7 @@ function SelectedUserModal({ user, onClose, savedProducts, savedLoading, items, 
                 ) : (
                   <div className="space-y-2.5 max-h-[600px] overflow-y-auto pr-1 custom-scrollbar">
                     {user.ordersList
-                      .sort((a, b) => (b.orderTime || b.createdAt || '').localeCompare(a.orderTime || a.createdAt || ''))
+                      .sort((a, b) => getTimeMs(b.orderTime || b.createdAt) - getTimeMs(a.orderTime || a.createdAt))
                       .map((order, idx) => {
                         const badge = getStatusBadge(order.status);
                         const BadgeIcon = badge.icon;
