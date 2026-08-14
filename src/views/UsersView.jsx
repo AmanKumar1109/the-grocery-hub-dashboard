@@ -1175,16 +1175,37 @@ function SelectedUserModal({ user, onClose, savedProducts, savedLoading, items, 
                               </div>
                             )}
 
-                            {/* Total */}
-                            <div className="pt-1.5 border-t border-slate-100 flex justify-between text-xs">
-                              <div className="flex items-center gap-3">
-                                {order.paymentMethod && (
-                                  <span className="flex items-center gap-1 text-slate-400 font-medium">
-                                    <CreditCard className="w-3 h-3" /> {order.paymentMethod}
-                                  </span>
-                                )}
+                            {/* Total and Fees */}
+                            <div className="pt-1.5 border-t border-slate-100 space-y-1 text-xs">
+                              <div className="flex justify-between text-slate-500 font-medium">
+                                <span>Subtotal</span>
+                                <span>₹{(order.subTotal || order.totalAmount || 0).toFixed(2)}</span>
                               </div>
-                              <span className="font-extrabold text-emerald-700">₹{(order.totalAmount || 0).toFixed(2)}</span>
+                              
+                              <div className="flex justify-between text-slate-500 font-medium">
+                                <span>Delivery Fee</span>
+                                <span className={order.deliveryFee === 0 ? "text-emerald-600 font-bold" : ""}>
+                                  {order.deliveryFee === 0 ? "FREE" : `₹${(order.deliveryFee || 0).toFixed(2)}`}
+                                </span>
+                              </div>
+
+                              {order.discountAmount > 0 && (
+                                <div className="flex justify-between text-emerald-600 font-medium">
+                                  <span>Discount {order.couponApplied ? `(${order.couponApplied})` : ''}</span>
+                                  <span>-₹{(order.discountAmount || 0).toFixed(2)}</span>
+                                </div>
+                              )}
+
+                              <div className="pt-1.5 mt-1.5 border-t border-slate-100 flex justify-between">
+                                <div className="flex items-center gap-3">
+                                  {order.paymentMethod && (
+                                    <span className="flex items-center gap-1 text-slate-400 font-medium">
+                                      <CreditCard className="w-3 h-3" /> {order.paymentMethod}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="font-extrabold text-emerald-700">₹{(order.totalAmount || 0).toFixed(2)}</span>
+                              </div>
                             </div>
 
                             {/* Cancel reason */}
