@@ -7,7 +7,7 @@ import ExcelProductImporter from '../components/ExcelProductImporter';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function AddItemView() {
-  const { categories, categoryDocs, addCategory, addItem } = useAdmin();
+  const { categories, categoryDocs, addCategory, addItem, globalSettings } = useAdmin();
   const navigate = useNavigate();
 
   const [creationMode, setCreationMode] = useState('single'); // 'single' | 'excel'
@@ -285,7 +285,7 @@ export default function AddItemView() {
               {/* Trending Product Toggle Selector */}
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-2 flex items-center gap-1">
-                  Trending Status
+                  {globalSettings?.trendingCustomName || 'Trending'} Status
                 </label>
                 <select
                   value={formData.isTrending ? 'true' : 'false'}
@@ -293,14 +293,14 @@ export default function AddItemView() {
                   className="w-full bg-slate-50 border border-amber-200 rounded-xl px-4 py-2.5 text-xs font-bold text-amber-900 focus:ring-2 focus:ring-amber-400 focus:outline-none"
                 >
                   <option value="false">Normal Product (Standard)</option>
-                  <option value="true">Mark as Trending Product</option>
+                  <option value="true">Mark as {globalSettings?.trendingCustomName || 'Trending'}</option>
                 </select>
               </div>
 
               {/* Buy 1 Get 1 Free Offer Selector */}
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-2 flex items-center gap-1">
-                  Buy 1 Get 1 Free Offer
+                  {globalSettings?.bogoCustomName || 'Buy 1 Get 1'} Offer
                 </label>
                 <select
                   value={formData.isBogo ? 'true' : 'false'}
@@ -308,7 +308,7 @@ export default function AddItemView() {
                   className="w-full bg-slate-50 border border-indigo-200 rounded-xl px-4 py-2.5 text-xs font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
                 >
                   <option value="false">Standard Single Item</option>
-                  <option value="true">Buy 1 Get 1 Free Offer</option>
+                  <option value="true">{globalSettings?.bogoCustomName || 'Buy 1 Get 1'}</option>
                 </select>
               </div>
 

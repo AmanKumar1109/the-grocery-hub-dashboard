@@ -56,6 +56,7 @@ export const AdminProvider = ({ children }) => {
   const [auditLogs, setAuditLogs] = useState([]);
   const [coupons, setCoupons] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [globalSettings, setGlobalSettings] = useState({});
 
   // Helper to purge auto-seeded dummy data & old food categories from Firestore
   const purgeDummyDataFromFirestore = async () => {
@@ -234,6 +235,15 @@ export const AdminProvider = ({ children }) => {
           setNotificationTemplates(DEFAULT_TEMPLATES);
         }
 
+        // Global settings snapshot
+        const unsubSettings = onSnapshot(doc(db, 'settings', 'global'), (snap) => {
+          if (snap.exists()) {
+            setGlobalSettings(snap.data());
+          } else {
+            setGlobalSettings({});
+          }
+        });
+
         return () => {
           unsubCat();
           unsubItems();
@@ -243,6 +253,7 @@ export const AdminProvider = ({ children }) => {
           unsubUsers();
           unsubLogs();
           unsubCoupons();
+          unsubSettings();
         };
       } catch (err) {
         console.error("Initialization error:", err);
@@ -977,7 +988,8 @@ export const AdminProvider = ({ children }) => {
       deleteCoupon,
       cancelOrder,
       notificationTemplates,
-      updateNotificationTemplates
+      updateNotificationTemplates,
+      globalSettings
     }}>
       {children}
     </AdminContext.Provider>

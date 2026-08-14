@@ -65,7 +65,7 @@ function SortableItemWrapper({ id, children }) {
 }
 
 export default function ItemsView() {
-  const { items, categories, categoryDocs, addCategory, addSubcategory, renameSubcategory, deleteSubcategory, deleteCategory, renameCategory, editItem, toggleItemTrending, toggleItemBogo, toggleItemVisibility, toggleItemStock, deleteItem, bulkUpdateItems, bulkDeleteItems, reorderItemsBatch } = useAdmin();
+  const { items, categories, categoryDocs, addCategory, addSubcategory, renameSubcategory, deleteSubcategory, deleteCategory, renameCategory, editItem, toggleItemTrending, toggleItemBogo, toggleItemVisibility, toggleItemStock, deleteItem, bulkUpdateItems, bulkDeleteItems, reorderItemsBatch, globalSettings } = useAdmin();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSubcategory, setSelectedSubcategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -155,7 +155,8 @@ export default function ItemsView() {
     }
   }, [selectedCategory, selectedSubcategory, searchQuery, items.length]);
 
-  const allCategoryTabs = ['All', '🔥 Trending', ...categories];
+  const trendingTabName = `🔥 ${globalSettings?.trendingCustomName || 'Trending'}`;
+  const allCategoryTabs = ['All', trendingTabName, ...categories];
   const filteredCategoryTabs = allCategoryTabs.filter(cat => 
     cat.toLowerCase().includes(categorySearchQuery.toLowerCase())
   );
@@ -164,7 +165,7 @@ export default function ItemsView() {
     const matchesCategory =
       selectedCategory === 'All'
         ? true
-        : selectedCategory === '🔥 Trending'
+        : selectedCategory === trendingTabName
           ? !!item.isTrending
           : item.category === selectedCategory;
           
@@ -596,13 +597,13 @@ export default function ItemsView() {
                           <div className="absolute bottom-3 left-3 z-10 flex flex-wrap items-center gap-1.5">
                             {item.isTrending && (
                               <span className="px-2.5 py-1 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] shadow-lg flex items-center gap-1 border border-amber-300">
-                                <Flame className="w-3 h-3 fill-slate-950" /> Trending
+                                <Flame className="w-3 h-3 fill-slate-950" /> {globalSettings?.trendingCustomName || 'Trending'}
                               </span>
                             )}
 
                             {item.isBogo && (
                               <span className="px-2.5 py-1 rounded-full bg-indigo-600 text-white font-black text-[10px] shadow-lg flex items-center gap-1 border border-indigo-400">
-                                <Gift className="w-3 h-3 text-white" /> Buy 1 Get 1
+                                <Gift className="w-3 h-3 text-white" /> {globalSettings?.bogoCustomName || 'Buy 1 Get 1'}
                               </span>
                             )}
                           </div>
@@ -1100,26 +1101,26 @@ export default function ItemsView() {
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Trending Tag</label>
+                  <label className="font-bold text-slate-700 block mb-1">{globalSettings?.trendingCustomName || 'Trending'}</label>
                   <select
                     value={editFormData.isTrending ? 'true' : 'false'}
                     onChange={e => setEditFormData({ ...editFormData, isTrending: e.target.value === 'true' })}
                     className="w-full bg-slate-50 border border-amber-200 rounded-xl px-2.5 py-2 text-amber-900 font-bold focus:ring-2 focus:ring-amber-400 text-xs"
                   >
                     <option value="false">Normal</option>
-                    <option value="true">Trending Product</option>
+                    <option value="true">{globalSettings?.trendingCustomName || 'Trending'}</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Buy 1 Get 1</label>
+                  <label className="font-bold text-slate-700 block mb-1">{globalSettings?.bogoCustomName || 'Buy 1 Get 1'}</label>
                   <select
                     value={editFormData.isBogo ? 'true' : 'false'}
                     onChange={e => setEditFormData({ ...editFormData, isBogo: e.target.value === 'true' })}
                     className="w-full bg-slate-50 border border-indigo-200 rounded-xl px-2.5 py-2 text-indigo-900 font-bold focus:ring-2 focus:ring-indigo-400 text-xs"
                   >
                     <option value="false">No Offer</option>
-                    <option value="true">Buy 1 Get 1 Free</option>
+                    <option value="true">{globalSettings?.bogoCustomName || 'Buy 1 Get 1'}</option>
                   </select>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Save, Loader2, Phone, Mail, Share2, Globe, Link as LinkIcon, Truck, Receipt, CheckCircle, AlertTriangle, Plus, Trash2, Star, Megaphone, Search, X, Sparkles, Table, RefreshCw, ListOrdered, ChevronUp, ChevronDown, Gift } from 'lucide-react';
+import { Save, Loader2, Phone, Mail, Share2, Globe, Link as LinkIcon, Truck, Receipt, CheckCircle, AlertTriangle, Plus, Trash2, Star, Megaphone, Search, X, Sparkles, Table, RefreshCw, ListOrdered, ChevronUp, ChevronDown, Gift, PenLine } from 'lucide-react';
 import ImageUploadInput from '../components/ImageUploadInput';
 import { useAdmin } from '../context/AdminContext';
 
@@ -1149,7 +1149,7 @@ export default function StoreSettingsView() {
                   <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 px-4 py-2 rounded-lg shadow-sm">
                     <span className="text-sm font-bold text-slate-700 flex items-center gap-2">
                       <span className="text-xs text-slate-400 font-mono w-4">{idx + 1}.</span> 
-                      {cat === 'all' ? 'All Products' : cat === 'BOGO' ? 'Buy 1 Get 1' : cat}
+                      {cat === 'all' ? 'All Products' : cat === 'Trending' ? (settings.trendingCustomName || 'Trending') : cat === 'BOGO' ? (settings.bogoCustomName || 'Buy 1 Get 1') : cat}
                     </span>
                     <div className="flex items-center gap-1">
                       <button 
@@ -1190,12 +1190,47 @@ export default function StoreSettingsView() {
                 >
                   <option value="">+ Re-add a missing Category</option>
                   <option value="all">All Products</option>
-                  <option value="Trending">Trending</option>
-                  <option value="BOGO">Buy 1 Get 1</option>
+                  <option value="Trending">{settings.trendingCustomName || 'Trending'}</option>
+                  <option value="BOGO">{settings.bogoCustomName || 'Buy 1 Get 1'}</option>
                   {(categoryDocs || []).map(cat => (
                     <option key={cat.name} value={cat.name}>{cat.name}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Custom Naming Settings */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6 md:col-span-2">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
+               <PenLine className="w-5 h-5 text-indigo-500" />
+               <h2 className="text-base font-bold text-slate-800">Special Category Labels</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Trending Feature Name</label>
+                <input
+                  type="text"
+                  name="trendingCustomName"
+                  value={settings.trendingCustomName ?? 'Trending'}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium"
+                  placeholder="e.g. Trending, Hot Deals, Top Sellers"
+                />
+                <p className="text-[10px] text-slate-500 mt-1.5 font-medium">Replaces "Trending" across the storefront</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Buy 1 Get 1 Feature Name</label>
+                <input
+                  type="text"
+                  name="bogoCustomName"
+                  value={settings.bogoCustomName ?? 'Buy 1 Get 1'}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium"
+                  placeholder="e.g. Buy 1 Get 1, BOGO, Free Gifts"
+                />
+                <p className="text-[10px] text-slate-500 mt-1.5 font-medium">Replaces "Buy 1 Get 1" across the storefront</p>
               </div>
             </div>
           </div>
