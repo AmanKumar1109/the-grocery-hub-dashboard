@@ -13,6 +13,7 @@ export default function StoreSettingsView() {
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [isCategorySearchFocused, setIsCategorySearchFocused] = useState(false);
   const [focusedBannerInput, setFocusedBannerInput] = useState(null);
+  const [newCustomTag, setNewCustomTag] = useState('');
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -136,6 +137,7 @@ export default function StoreSettingsView() {
       { title: 'No-Questions Returns', description: 'Product pasand nahi aaya? Koi baat nahi! Instant refund ya replacement — bina koi sawal ke.', iconName: 'HeartHandshake', colorTheme: 'violet' },
       { title: 'Open 7 Days a Week', description: 'Subah se raat tak, Monday se Sunday — jab chaaho tab order karo. Hum hamesha available hain!', iconName: 'Clock', colorTheme: 'teal' }
     ],
+    customTagsList: [],
     footerTitle: 'Get Fresh Groceries in 15 Minutes!',
     footerEmoji: '🚀',
     footerSubtitle: 'Shop online for superfast delivery of everyday essentials.',
@@ -312,6 +314,42 @@ export default function StoreSettingsView() {
       ...prev,
       testimonialsList: [...(prev.testimonialsList || []), { id: Date.now(), name: '', location: '', rating: 5, comment: '', verified: true, avatar: '' }]
     }));
+  };
+
+  const handleRemoveLocation = (index) => {
+    setSettings(prev => {
+      const newList = [...prev.availableLocations];
+      newList.splice(index, 1);
+      return { ...prev, availableLocations: newList };
+    });
+  };
+
+  const handleAddCustomTag = (e) => {
+    e.preventDefault();
+    if (!newCustomTag.trim()) return;
+    setSettings(prev => ({
+      ...prev,
+      customTagsList: [...(prev.customTagsList || []), newCustomTag.trim()]
+    }));
+    setNewCustomTag('');
+  };
+
+  const handleRemoveCustomTag = (index) => {
+    setSettings(prev => {
+      const newList = [...(prev.customTagsList || [])];
+      newList.splice(index, 1);
+      return { ...prev, customTagsList: newList };
+    });
+  };
+
+  const handleToggleColumnGroup = (colIndex, groupIndex) => {
+    setSettings(prev => {
+      const newCols = [...prev.footerColumns];
+      const newLinks = [...newCols[colIndex].links];
+      newLinks[groupIndex].isExpanded = !newLinks[groupIndex].isExpanded;
+      newCols[colIndex] = { ...newCols[colIndex], links: newLinks };
+      return { ...prev, footerColumns: newCols };
+    });
   };
 
   const handleRemoveTestimonial = (index) => {
@@ -1232,6 +1270,54 @@ export default function StoreSettingsView() {
                 />
                 <p className="text-[10px] text-slate-500 mt-1.5 font-medium">Replaces "Buy 1 Get 1" across the storefront</p>
               </div>
+            </div>
+          </div>
+
+
+          {/* Dynamic Custom Tags Settings */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6 md:col-span-2">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
+               <Sparkles className="w-5 h-5 text-fuchsia-500" />
+               <h2 className="text-base font-bold text-slate-800">Dynamic Custom Tags</h2>
+            </div>
+            
+            <p className="text-sm text-slate-500 font-medium">Create your own custom tags (e.g. "Diwali Special", "Weekend Sale"). Products with these tags will automatically appear in new categories on the storefront.</p>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newCustomTag}
+                  onChange={(e) => setNewCustomTag(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddCustomTag(e)}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-fuchsia-500 transition-all outline-none font-medium"
+                  placeholder="e.g. Diwali Special"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCustomTag}
+                  className="px-4 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap shadow-sm shadow-fuchsia-200"
+                >
+                  <Plus className="w-4 h-4" /> Add Tag
+                </button>
+              </div>
+
+              {settings.customTagsList && settings.customTagsList.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {settings.customTagsList.map((tag, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-fuchsia-50 border border-fuchsia-200 text-fuchsia-800 px-3 py-1.5 rounded-lg text-sm font-bold">
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCustomTag(idx)}
+                        className="text-fuchsia-400 hover:text-rose-600 transition-colors p-0.5"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

@@ -108,9 +108,11 @@ export default function ItemsView() {
     recentBuyers: '',
     inStock: true,
     isTrending: false,
+    isBogo: false,
     image: '',
     unit: '',
-    maxQuantity: ''
+    maxQuantity: '',
+    tags: []
   });
 
   const listRef = useRef(null);
@@ -156,18 +158,22 @@ export default function ItemsView() {
   }, [selectedCategory, selectedSubcategory, searchQuery, items.length]);
 
   const trendingTabName = `🔥 ${globalSettings?.trendingCustomName || 'Trending'}`;
-  const allCategoryTabs = ['All', trendingTabName, ...categories];
+  const customTagsTabs = globalSettings?.customTagsList || [];
+  const allCategoryTabs = ['All', trendingTabName, ...customTagsTabs, ...categories];
   const filteredCategoryTabs = allCategoryTabs.filter(cat => 
     cat.toLowerCase().includes(categorySearchQuery.toLowerCase())
   );
 
   const filteredItems = items.filter(item => {
+    const isCustomTag = customTagsTabs.includes(selectedCategory);
     const matchesCategory =
       selectedCategory === 'All'
         ? true
         : selectedCategory === trendingTabName
           ? !!item.isTrending
-          : item.category === selectedCategory;
+          : isCustomTag
+            ? (item.tags || []).includes(selectedCategory)
+            : item.category === selectedCategory;
           
     const matchesSubcategory = 
       selectedSubcategory === 'All' 
@@ -213,7 +219,8 @@ export default function ItemsView() {
       isBogo: !!item.isBogo,
       image: item.image,
       unit: item.unit || '',
-      maxQuantity: item.maxQuantity !== undefined ? item.maxQuantity : ''
+      maxQuantity: item.maxQuantity !== undefined ? item.maxQuantity : '',
+      tags: item.tags || []
     });
   };
 
@@ -606,6 +613,12 @@ export default function ItemsView() {
                                 <Gift className="w-3 h-3 text-white" /> {globalSettings?.bogoCustomName || 'Buy 1 Get 1'}
                               </span>
                             )}
+                            
+                            {(item.tags || []).map(tag => (
+                              <span key={tag} className="px-2.5 py-1 rounded-full bg-fuchsia-600 text-white font-black text-[10px] shadow-lg flex items-center gap-1 border border-fuchsia-400">
+                                {tag}
+                              </span>
+                            ))}
                           </div>
                         </div>
 
@@ -1124,6 +1137,39 @@ export default function ItemsView() {
                   </select>
                 </div>
               </div>
+
+              {/* Dynamic Custom Tags */}
+              {globalSettings?.customTagsList && globalSettings.customTagsList.length > 0 && (
+                <div>
+                  <label className="font-bold text-slate-700 block mb-2">Custom Special Tags</label>
+                  <div className="flex flex-wrap gap-2">
+                    {globalSettings.customTagsList.map(tag => {
+                      const isSelected = editFormData.tags.includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            setEditFormData(prev => {
+                              const newTags = isSelected 
+                                ? prev.tags.filter(t => t !== tag)
+                                : [...prev.tags, tag];
+                              return { ...prev, tags: newTags };
+                            });
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all border ${
+                            isSelected 
+                              ? 'bg-fuchsia-600 text-white border-fuchsia-600 shadow-sm' 
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-fuchsia-300'
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="pt-4 flex justify-end gap-3">
                 <button

@@ -24,7 +24,8 @@ export default function AddItemView() {
     isBogo: false,
     image: '',
     unit: '',
-    maxQuantity: ''
+    maxQuantity: '',
+    tags: []
   });
 
   // Calculate off percentage live
@@ -311,6 +312,39 @@ export default function AddItemView() {
                   <option value="true">{globalSettings?.bogoCustomName || 'Buy 1 Get 1'}</option>
                 </select>
               </div>
+
+              {/* Dynamic Custom Tags */}
+              {globalSettings?.customTagsList && globalSettings.customTagsList.length > 0 && (
+                <div className="md:col-span-2">
+                  <label className="text-xs font-bold text-slate-700 block mb-3">Custom Special Tags</label>
+                  <div className="flex flex-wrap gap-3">
+                    {globalSettings.customTagsList.map(tag => {
+                      const isSelected = formData.tags.includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => {
+                              const newTags = isSelected 
+                                ? prev.tags.filter(t => t !== tag)
+                                : [...prev.tags, tag];
+                              return { ...prev, tags: newTags };
+                            });
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                            isSelected 
+                              ? 'bg-fuchsia-600 text-white border-fuchsia-600 shadow-sm' 
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-fuchsia-300'
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
             {/* Product Image Input (Firebase Storage Upload & URL Link) */}
             <div className="md:col-span-2">
