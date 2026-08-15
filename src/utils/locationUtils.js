@@ -10,7 +10,7 @@ export const BAHARAGORA_HUB = {
 };
 
 // Maximum Allowed Delivery Radius Limit (in Kilometers)
-export const MAX_DELIVERY_RADIUS_KM = 5.0;
+export const MAX_DELIVERY_RADIUS_KM = 7.0;
 
 /**
  * Calculates Haversine distance in kilometers between two coordinates (lat1, lon1) and (lat2, lon2)
@@ -36,7 +36,7 @@ export function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 /**
- * Checks if a customer location is within the 5 km Baharagora delivery zone
+ * Checks if a customer location is within the 7 km Baharagora delivery zone
  */
 export function checkDeliveryServiceable(lat, lng) {
   if (!lat || !lng) {
@@ -60,7 +60,7 @@ export function checkDeliveryServiceable(lat, lng) {
 }
 
 /**
- * Calculates Estimated Time of Arrival (ETA) based on average urban rider speed (25 km/h)
+ * Calculates Estimated Time of Arrival (ETA) based on average urban rider speed (27 km/h)
  */
 export function calculateETA(distanceKm, averageSpeedKmH = 25) {
   if (!distanceKm || distanceKm <= 0) return '5-10 mins';

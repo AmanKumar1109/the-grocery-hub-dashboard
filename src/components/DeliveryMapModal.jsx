@@ -140,7 +140,7 @@ export default function DeliveryMapModal({ order, onClose }) {
       attribution: '&copy; Google Maps'
     }).addTo(map);
 
-    // 1. Draw 5 KM Geofence Circle around Baharagora Hub
+    // 1. Draw 7 KM Geofence Circle around Baharagora Hub
     const isServiceable = serviceCheck.isServiceable;
     const geofenceCircle = L.circle([BAHARAGORA_HUB.lat, BAHARAGORA_HUB.lng], {
       radius: MAX_DELIVERY_RADIUS_KM * 1000, // 5000m
@@ -161,7 +161,7 @@ export default function DeliveryMapModal({ order, onClose }) {
     geofenceCircle.bindPopup(`
       <div style="font-family: sans-serif; font-size: 12px; font-weight: bold; text-align: center;">
         <span style="color: ${isServiceable ? '#059669' : '#e11d48'};">
-          ${isServiceable ? '✅ 5 KM Baharagora Delivery Zone' : '⚠️ 5 KM Delivery Radius Limit'}
+          ${isServiceable ? '✅ 7 KM Baharagora Delivery Zone' : '⚠️ 7 KM Delivery Radius Limit'}
         </span>
         <br/>
         <span style="font-weight: normal; color: #64748b;">All deliveries within 5km of Baharagora Hub are serviced.</span>
@@ -385,7 +385,7 @@ export default function DeliveryMapModal({ order, onClose }) {
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Baharagora 5 KM Delivery Zone & Live Rider Navigation
+                Baharagora 7 KM Delivery Zone & Live Rider Navigation
               </p>
             </div>
           </div>
@@ -395,12 +395,12 @@ export default function DeliveryMapModal({ order, onClose }) {
             {serviceCheck && serviceCheck.isServiceable ? (
               <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                {roadDistance !== null ? roadDistance : serviceCheck.distanceKm} km (Within 5 km Zone)
+                {roadDistance !== null ? roadDistance : serviceCheck.distanceKm} km (Within 7 km Zone)
               </span>
             ) : (
               <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-rose-400" />
-                {roadDistance !== null ? roadDistance : (serviceCheck ? serviceCheck.distanceKm : 0)} km (Exceeds 5 km Limit!)
+                {roadDistance !== null ? roadDistance : (serviceCheck ? serviceCheck.distanceKm : 0)} km (Exceeds 7 km Limit!)
               </span>
             )}
 
@@ -487,11 +487,11 @@ export default function DeliveryMapModal({ order, onClose }) {
         <div className="relative w-full h-[440px] min-h-[440px] bg-slate-100 overflow-hidden">
           <div ref={mapContainerRef} style={{ width: '100%', height: '440px', minHeight: '440px', zIndex: 1 }} className="w-full h-full" />
 
-          {/* Warning Banner if Customer is Beyond 5 KM */}
+          {/* Warning Banner if Customer is Beyond 7 KM */}
           {serviceCheck && !serviceCheck.isServiceable && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-rose-600 text-white px-4 py-2 rounded-2xl shadow-xl border border-rose-400 text-xs font-bold flex items-center gap-2 animate-bounce">
               <AlertTriangle className="w-4 h-4 text-white" />
-              <span>OUT OF SERVICE RADIUS: Customer address is {serviceCheck.distanceKm} km from Baharagora Store (Exceeds 5 km limit)</span>
+              <span>OUT OF SERVICE RADIUS: Customer address is {serviceCheck.distanceKm} km from Baharagora Store (Exceeds 7 km limit)</span>
             </div>
           )}
         </div>
