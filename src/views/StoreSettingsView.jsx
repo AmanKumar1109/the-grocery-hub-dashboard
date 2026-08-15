@@ -196,7 +196,7 @@ export default function StoreSettingsView() {
     referralCouponMinOrderValue: 100,
     referralCouponValidityDays: 30,
     referralBannerTitle: 'Refer Friends, Earn Rewards!',
-    referralBannerDescription: 'Invite your friends to The Grocery Hub. They get ₹{friendRewardAmount} OFF on their first order, and you earn exciting reward coupons!',
+    referralBannerDescription: 'Invite your friends to The Grocery Hub! After their first order is delivered, BOTH of you earn exciting reward coupons!',
     referralBannerButton: 'Start Earning'
   });
 
@@ -916,7 +916,7 @@ export default function StoreSettingsView() {
                   <label className="block text-xs font-bold text-slate-600 mb-1.5">Banner Description (Use {'{friendRewardAmount}'} for dynamic value)</label>
                   <textarea
                     name="referralBannerDescription"
-                    value={settings.referralBannerDescription ?? 'Invite your friends to The Grocery Hub. They get ₹{friendRewardAmount} OFF on their first order, and you earn exciting reward coupons!'}
+                    value={settings.referralBannerDescription ?? 'Invite your friends to The Grocery Hub! After their first order is delivered, BOTH of you earn exciting reward coupons!'}
                     onChange={handleChange}
                     rows="2"
                     className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium resize-none"
