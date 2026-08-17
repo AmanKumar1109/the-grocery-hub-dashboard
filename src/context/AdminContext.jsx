@@ -279,7 +279,11 @@ export const AdminProvider = ({ children }) => {
 
   // Audit Log Helper
   const addAuditLog = async (action, details, category = 'General', severity = 'info') => {
-    const logId = `LOG-${generateAlphanumericId(9)}`;
+    let randomLogCode = generateAlphanumericId(9);
+    while (auditLogs.some(l => l.id === `LOG-${randomLogCode}`)) {
+      randomLogCode = generateAlphanumericId(9);
+    }
+    const logId = `LOG-${randomLogCode}`;
     const newLog = {
       id: logId,
       timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
