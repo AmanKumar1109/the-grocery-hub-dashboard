@@ -136,8 +136,8 @@ export default function CompareLogsView() {
       // If not in direct fields, search for image URL in log.details or metadata
       if (!originImage && log.details) {
         const urlMatch = log.details.match(/(https?:\/\/[^\s"'\)]+\.(?:jpg|jpeg|png|webp|avif|gif|svg))/i) ||
-                         log.details.match(/(https?:\/\/firebasestorage\.googleapis\.com[^\s"'\)]+)/i) ||
-                         log.details.match(/(https?:\/\/res\.cloudinary\.com[^\s"'\)]+)/i);
+          log.details.match(/(https?:\/\/firebasestorage\.googleapis\.com[^\s"'\)]+)/i) ||
+          log.details.match(/(https?:\/\/res\.cloudinary\.com[^\s"'\)]+)/i);
         if (urlMatch && urlMatch[1]) {
           originImage = urlMatch[1];
         }
@@ -276,12 +276,13 @@ export default function CompareLogsView() {
     }
   };
 
-  // Bulk Restore All Missing Products Handler
+  // Bulk Restore 10 Missing Products Handler
   const handleRestoreAllMissing = async () => {
     if (missingProductsList.length === 0) return;
     setIsBulkRestoring(true);
     try {
-      for (const prod of missingProductsList) {
+      const itemsToRestore = missingProductsList.slice(0, 10);
+      for (const prod of itemsToRestore) {
         await addItem({
           name: prod.name.trim(),
           sellingPrice: prod.sellingPrice || '60',
@@ -447,12 +448,12 @@ export default function CompareLogsView() {
                   {isBulkRestoring ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Restoring Catalog...</span>
+                      <span>Restoring {Math.min(10, missingProductsList.length)} Items...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      <span>Restore All ({missingProductsList.length}) Missing</span>
+                      <span>Restore {Math.min(10, missingProductsList.length)} Missing (of {missingProductsList.length})</span>
                     </>
                   )}
                 </button>
@@ -479,9 +480,8 @@ export default function CompareLogsView() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer ${
-                  statusFilter !== 'All' ? 'border-emerald-500 bg-emerald-50/40 text-emerald-900 font-bold' : 'border-slate-200 text-slate-700'
-                }`}
+                className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer ${statusFilter !== 'All' ? 'border-emerald-500 bg-emerald-50/40 text-emerald-900 font-bold' : 'border-slate-200 text-slate-700'
+                  }`}
               >
                 <option value="All">All Products ({allAuditedProducts.length})</option>
                 <option value="missing">⚠️ Missing Only ({missingProductsList.length})</option>
@@ -500,9 +500,8 @@ export default function CompareLogsView() {
                   setDateFilter(e.target.value);
                   if (e.target.value !== 'All') setSpecificDate('');
                 }}
-                className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer ${
-                  dateFilter !== 'All' ? 'border-emerald-500 bg-emerald-50/40 text-emerald-900 font-bold' : 'border-slate-200 text-slate-700'
-                }`}
+                className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer ${dateFilter !== 'All' ? 'border-emerald-500 bg-emerald-50/40 text-emerald-900 font-bold' : 'border-slate-200 text-slate-700'
+                  }`}
               >
                 <option value="All">All Time</option>
                 <option value="today">Today</option>
@@ -536,9 +535,8 @@ export default function CompareLogsView() {
                   setSpecificDate(e.target.value);
                   if (e.target.value) setDateFilter('All');
                 }}
-                className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer ${
-                  specificDate ? 'border-emerald-500 bg-emerald-50/40 text-emerald-900 font-bold' : 'border-slate-200'
-                }`}
+                className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer ${specificDate ? 'border-emerald-500 bg-emerald-50/40 text-emerald-900 font-bold' : 'border-slate-200'
+                  }`}
               />
             </div>
 
@@ -550,9 +548,8 @@ export default function CompareLogsView() {
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer ${
-                  categoryFilter !== 'All' ? 'border-emerald-500 bg-emerald-50/40 text-emerald-900 font-bold' : 'border-slate-200 text-slate-700'
-                }`}
+                className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer ${categoryFilter !== 'All' ? 'border-emerald-500 bg-emerald-50/40 text-emerald-900 font-bold' : 'border-slate-200 text-slate-700'
+                  }`}
               >
                 <option value="All">All Categories</option>
                 {categories.map(cat => (
@@ -628,7 +625,6 @@ export default function CompareLogsView() {
                     <th className="py-3.5 px-4 min-w-[70px]">Image</th>
                     <th className="py-3.5 px-4 min-w-[220px]">Product Name & Status</th>
                     <th className="py-3.5 px-4 min-w-[130px]">Category</th>
-                    <th className="py-3.5 px-4 min-w-[90px]">Unit</th>
                     <th className="py-3.5 px-3 min-w-[90px]">MRP (₹)</th>
                     <th className="py-3.5 px-3 min-w-[90px]">Price (₹)</th>
                     <th className="py-3.5 px-4 min-w-[160px]">Log Reference</th>
@@ -644,9 +640,8 @@ export default function CompareLogsView() {
                     return (
                       <tr
                         key={prod.id}
-                        className={`transition-colors ${
-                          prod.isMissing ? 'bg-amber-50/25 hover:bg-amber-50/50' : 'hover:bg-slate-50/80'
-                        }`}
+                        className={`transition-colors ${prod.isMissing ? 'bg-amber-50/25 hover:bg-amber-50/50' : 'hover:bg-slate-50/80'
+                          }`}
                       >
                         <td className="py-3.5 px-4 text-center font-bold text-slate-400">
                           {index + 1}
@@ -705,11 +700,6 @@ export default function CompareLogsView() {
                           </span>
                         </td>
 
-                        {/* Unit */}
-                        <td className="py-3.5 px-4 font-semibold text-slate-600">
-                          {prod.unit || '1 pc'}
-                        </td>
-
                         {/* MRP */}
                         <td className="py-3.5 px-3 font-semibold text-slate-500">
                           ₹{parseFloat(prod.sellingPrice).toFixed(2)}
@@ -755,11 +745,10 @@ export default function CompareLogsView() {
                                 type="button"
                                 onClick={() => handleRestoreProduct(prod)}
                                 disabled={isRestoring || isRestored}
-                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer ${
-                                  isRestored
+                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer ${isRestored
                                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                     : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                }`}
+                                  }`}
                               >
                                 {isRestoring ? (
                                   <>

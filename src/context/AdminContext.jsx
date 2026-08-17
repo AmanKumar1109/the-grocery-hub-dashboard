@@ -32,6 +32,7 @@ const secondaryAuth = getAuth(secondaryApp);
 export const AdminProvider = ({ children }) => {
   // Default Grocery Categories
   const defaultGroceryCategories = [
+    'General',
     'Fresh Vegetables',
     'Organic Fruits',
     'Dairy & Eggs',
@@ -43,7 +44,7 @@ export const AdminProvider = ({ children }) => {
 
   // Pure Real-time Firestore state
   const [revenueStats, setRevenueStats] = useState({ daily: 0, weekly: 0, monthly: 0 });
-  
+
   // Notification templates
   const [notificationTemplates, setNotificationTemplates] = useState({});
   const [categories, setCategories] = useState(defaultGroceryCategories);
@@ -130,7 +131,18 @@ export const AdminProvider = ({ children }) => {
             const loadedCats = snap.docs.map(d => d.data().name || d.id);
             const docs = snap.docs.map(d => ({ id: d.id, name: d.data().name || d.id, subcategories: d.data().subcategories || [] }));
             const cleanCats = loadedCats.filter(c => !['Burgers', 'Burger', 'Pizza', 'Pizzas', 'Salad', 'Salads', 'Drink', 'Drinks', 'Dessert', 'Desserts', 'Starters', 'Main Course', 'Fast Food'].includes(c));
+            
+            // Ensure General category is always present in Admin
+            if (!cleanCats.includes('General')) {
+              cleanCats.unshift('General');
+              setDoc(doc(db, 'categories', 'General'), { name: 'General', subcategories: [] }).catch(() => {});
+            }
+
             const cleanDocs = docs.filter(c => cleanCats.includes(c.name));
+            if (!cleanDocs.find(c => c.name === 'General')) {
+              cleanDocs.unshift({ id: 'General', name: 'General', subcategories: [] });
+            }
+
             setCategories(cleanCats.length > 0 ? cleanCats : defaultGroceryCategories);
             setCategoryDocs(cleanDocs.length > 0 ? cleanDocs : defaultGroceryCategories.map(name => ({ id: name, name, subcategories: [] })));
           }
@@ -412,7 +424,7 @@ export const AdminProvider = ({ children }) => {
     const existingMatch = categories.find(c => c.toLowerCase() === finalCategory.toLowerCase());
     if (existingMatch) {
       finalCategory = existingMatch;
-    } else if (finalCategory !== 'General') {
+    } else {
       await addCategory(finalCategory);
     }
 
@@ -469,7 +481,7 @@ export const AdminProvider = ({ children }) => {
     const existingMatch = categories.find(c => c.toLowerCase() === finalCategory.toLowerCase());
     if (existingMatch) {
       finalCategory = existingMatch;
-    } else if (finalCategory && finalCategory !== 'General') {
+    } else if (finalCategory) {
       await addCategory(finalCategory);
     }
     const mrp = parseFloat(updatedFields.sellingPrice) || 0;
@@ -577,11 +589,11 @@ export const AdminProvider = ({ children }) => {
       let emailHtml = '';
 
       const customerName = order.address?.name || 'Customer';
-      
+
       const prepareEmailParams = (templateKey) => {
         const template = notificationTemplates[templateKey];
         if (!template) return null;
-        
+
         const formatMoney = (amt) => Number(amt).toFixed(2);
         const formatAddress = (addr) => {
           if (!addr) return 'N/A';
@@ -595,7 +607,7 @@ export const AdminProvider = ({ children }) => {
         const formatTime = (ts) => ts ? new Date(ts.seconds ? ts.seconds * 1000 : ts).toLocaleString() : 'N/A';
 
         const rawBody = template.body || '';
-        
+
         let replacedHtmlBody = rawBody.replace(/\n/g, '<br>');
         replacedHtmlBody = replacedHtmlBody
           .replace(/\[Customer Name\]/gi, customerName)
@@ -670,7 +682,7 @@ export const AdminProvider = ({ children }) => {
 
     if (newStatus === 'Cancelled') {
       await addAuditLog('ORDER_CANCELLED', `Cancelled Order #${orderId}. Reason: "${reason || 'Unspecified'}"`, 'Orders', 'danger');
-      
+
       // Restore inventory
       if (order && order.items && Array.isArray(order.items)) {
         for (const item of order.items) {
