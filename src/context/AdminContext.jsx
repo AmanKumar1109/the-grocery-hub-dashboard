@@ -32,14 +32,7 @@ const secondaryAuth = getAuth(secondaryApp);
 export const AdminProvider = ({ children }) => {
   // Default Grocery Categories
   const defaultGroceryCategories = [
-    'General',
-    'Fresh Vegetables',
-    'Organic Fruits',
-    'Dairy & Eggs',
-    'Bakery & Bread',
-    'Beverages & Juices',
-    'Snacks & Munchies',
-    'Meat & Seafood'
+    'General'
   ];
 
   // Pure Real-time Firestore state
@@ -121,12 +114,10 @@ export const AdminProvider = ({ children }) => {
         // Categories snapshot
         const unsubCat = onSnapshot(collection(db, 'categories'), async (snap) => {
           if (snap.empty) {
-            // Auto-seed default grocery categories
-            for (const catName of defaultGroceryCategories) {
-              await setDoc(doc(db, 'categories', catName), { name: catName, subcategories: [] }).catch(() => { });
-            }
-            setCategories(defaultGroceryCategories);
-            setCategoryDocs(defaultGroceryCategories.map(name => ({ id: name, name, subcategories: [] })));
+            // Auto-seed only General category
+            await setDoc(doc(db, 'categories', 'General'), { name: 'General', subcategories: [] }).catch(() => { });
+            setCategories(['General']);
+            setCategoryDocs([{ id: 'General', name: 'General', subcategories: [] }]);
           } else {
             const loadedCats = snap.docs.map(d => d.data().name || d.id);
             const docs = snap.docs.map(d => ({ id: d.id, name: d.data().name || d.id, subcategories: d.data().subcategories || [] }));
