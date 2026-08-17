@@ -18,6 +18,7 @@ import OrderHistoryView from './views/OrderHistoryView';
 import StaffView from './views/StaffView';
 import AddStaffView from './views/AddStaffView';
 import AuditLogsView from './views/AuditLogsView';
+import CompareLogsView from './views/CompareLogsView';
 import ComplaintsView from './views/ComplaintsView';
 import UsersView from './views/UsersView';
 import CouponsView from './views/CouponsView';
@@ -55,6 +56,7 @@ function AdminLayout() {
             <Route path="staff" element={<StaffView />} />
             <Route path="staff/add" element={<AddStaffView />} />
             <Route path="audit-logs" element={<AuditLogsView />} />
+            <Route path="compare-logs" element={<CompareLogsView />} />
             <Route path="privacy-policy" element={<PrivacyPolicyView />} />
             <Route path="terms-of-service" element={<TermsOfServiceView />} />
             <Route path="refund-policy" element={<RefundPolicyView />} />

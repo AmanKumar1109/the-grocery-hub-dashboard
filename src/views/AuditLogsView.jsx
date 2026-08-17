@@ -21,10 +21,13 @@ import {
   Calendar,
   Package,
   CalendarDays,
-  X
+  X,
+  Database,
+  ArrowUpRight
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
+import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import * as XLSX from 'xlsx';
 
@@ -36,7 +39,7 @@ export default function AuditLogsView() {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [actionFilter, setActionFilter] = useState('All');
   const [severityFilter, setSeverityFilter] = useState('All');
-  const [dateFilter, setDateFilter] = useState('All'); // 'All' | 'today' | 'yesterday' | 'week' | 'month' | 'custom'
+  const [dateFilter, setDateFilter] = useState('All'); // 'All' | 'today' | 'yesterday' | 'week' | 'month'
   const [specificDate, setSpecificDate] = useState(''); // 'YYYY-MM-DD'
   const [selectedProduct, setSelectedProduct] = useState('All'); // Filter by extracted product name
 
@@ -73,12 +76,10 @@ export default function AuditLogsView() {
     const prodSet = new Set();
     auditLogs.forEach(log => {
       if (log.details) {
-        // Regex matches product names inside quotes like "Fresh Organic Tomatoes"
         const matches = log.details.match(/"([^"]+)"/g);
         if (matches) {
           matches.forEach(m => {
             const clean = m.replace(/"/g, '').trim();
-            // Filter out non-product string quotes (e.g. single words that are IDs or short status)
             if (clean && clean.length > 2 && !clean.startsWith('LOG-') && !clean.startsWith('ORD-') && !clean.startsWith('STF-')) {
               prodSet.add(clean);
             }
@@ -154,7 +155,6 @@ export default function AuditLogsView() {
           log.timestamp || ''
         ].join(' ').toLowerCase();
 
-        // Every search term token must match somewhere in the corpus
         const allTermsMatch = queryTerms.every(term => searchableCorpus.includes(term));
         if (!allTermsMatch) {
           return false;
@@ -279,13 +279,13 @@ export default function AuditLogsView() {
     <div className="flex-1 min-h-screen bg-slate-50/50 flex flex-col">
       <Header
         title="System Audit Logs"
-        subtitle="Chronological timeline of catalog updates, product changes, order tracking & 9-digit traceable log IDs"
+        subtitle="Chronological timeline of catalog updates, order tracking & 9-digit traceable log IDs"
       />
 
       <main className="p-6 md:p-8 space-y-6 flex-1 max-w-7xl w-full mx-auto">
         {/* TOP FILTER & SEARCH CONTROL CARD */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-          {/* Row 1: Universal Search Bar (ID, Product Name, Action, etc.) & Action Buttons */}
+          {/* Row 1: Universal Search Bar & Action Buttons */}
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -332,9 +332,9 @@ export default function AuditLogsView() {
             </div>
           </div>
 
-          {/* Row 2: Comprehensive Multi-Filters (Category, Action, Specific Date Picker, Date Presets, Product Selector) */}
+          {/* Row 2: Comprehensive Multi-Filters */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-slate-100">
-            {/* 1. Particular Single Date Picker */}
+            {/* Particular Single Date Picker */}
             <div>
               <label className="text-[11px] font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
                 <span className="flex items-center gap-1">
@@ -365,7 +365,7 @@ export default function AuditLogsView() {
               </div>
             </div>
 
-            {/* 2. Date Range Presets (Today, Yesterday, Week, Month) */}
+            {/* Date Range Presets */}
             <div>
               <label className="text-[11px] font-bold text-slate-500 block mb-1.5 flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-slate-400" /> Date Preset
@@ -388,7 +388,7 @@ export default function AuditLogsView() {
               </select>
             </div>
 
-            {/* 3. Action Event Type Filter */}
+            {/* Action Event Type Filter */}
             <div>
               <label className="text-[11px] font-bold text-slate-500 block mb-1.5 flex items-center gap-1">
                 <Tag className="w-3 h-3 text-slate-400" /> Action Event ({uniqueActions.length})
@@ -409,7 +409,7 @@ export default function AuditLogsView() {
               </select>
             </div>
 
-            {/* 4. Product Name Filter */}
+            {/* Product Name Filter */}
             <div>
               <label className="text-[11px] font-bold text-slate-500 block mb-1.5 flex items-center gap-1">
                 <Package className="w-3 h-3 text-slate-400" /> Product Name
@@ -428,7 +428,7 @@ export default function AuditLogsView() {
               </select>
             </div>
 
-            {/* 5. Category & Severity Selector */}
+            {/* Category Filter */}
             <div>
               <label className="text-[11px] font-bold text-slate-500 block mb-1.5 flex items-center gap-1">
                 <Layers className="w-3 h-3 text-slate-400" /> Category
@@ -446,55 +446,6 @@ export default function AuditLogsView() {
               </select>
             </div>
           </div>
-
-          {/* ACTIVE FILTER BADGES ROW */}
-          {isAnyFilterActive && (
-            <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100">
-              <span className="text-[11px] font-bold text-slate-400">Active Filters:</span>
-              {searchQuery && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold rounded-lg">
-                  Search: "{searchQuery}"
-                  <button onClick={() => setSearchQuery('')} className="hover:text-emerald-900">✕</button>
-                </span>
-              )}
-              {specificDate && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold rounded-lg">
-                  Date: {specificDate}
-                  <button onClick={() => setSpecificDate('')} className="hover:text-emerald-900">✕</button>
-                </span>
-              )}
-              {dateFilter !== 'All' && !specificDate && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold rounded-lg">
-                  Preset: {dateFilter}
-                  <button onClick={() => setDateFilter('All')} className="hover:text-emerald-900">✕</button>
-                </span>
-              )}
-              {actionFilter !== 'All' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold rounded-lg">
-                  Action: {actionFilter}
-                  <button onClick={() => setActionFilter('All')} className="hover:text-emerald-900">✕</button>
-                </span>
-              )}
-              {selectedProduct !== 'All' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold rounded-lg">
-                  Product: {selectedProduct}
-                  <button onClick={() => setSelectedProduct('All')} className="hover:text-emerald-900">✕</button>
-                </span>
-              )}
-              {categoryFilter !== 'All' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold rounded-lg">
-                  Category: {categoryFilter}
-                  <button onClick={() => setCategoryFilter('All')} className="hover:text-emerald-900">✕</button>
-                </span>
-              )}
-              {severityFilter !== 'All' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold rounded-lg">
-                  Severity: {severityFilter}
-                  <button onClick={() => setSeverityFilter('All')} className="hover:text-emerald-900">✕</button>
-                </span>
-              )}
-            </div>
-          )}
         </div>
 
         {/* SUMMARY STATS & RESULTS COUNTER */}

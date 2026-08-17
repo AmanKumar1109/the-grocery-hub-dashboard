@@ -182,6 +182,7 @@ export default function ItemsView() {
 
     const q = searchQuery.toLowerCase();
     const matchesSearch = (item.name || '').toLowerCase().includes(q) || 
+                          (item.id || '').toLowerCase().includes(q) || 
                           (item.category || '').toLowerCase().includes(q) || 
                           (item.subcategory || '').toLowerCase().includes(q);
     const matchesStock = outOfStockOnly ? item.inStock === false : true;
@@ -625,16 +626,23 @@ export default function ItemsView() {
                         {/* Card Main Content */}
                         <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                           <div>
+                            {/* Product ID & Quick Info Badge */}
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="font-mono text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md border border-slate-200/70 inline-flex items-center gap-1 transition-colors select-all" title="Product ID">
+                                <span className="text-slate-400 font-semibold text-[9px]">ID:</span> {item.id}
+                              </span>
+                              {item.unit && (
+                                <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/50">
+                                  {item.unit}
+                                </span>
+                              )}
+                            </div>
+
                             <div className="flex items-start justify-between gap-2">
                               <div>
                                 <h3 className="font-extrabold text-slate-900 text-base leading-snug group-hover:text-emerald-600 transition-colors line-clamp-2">
                                   {item.name}
                                 </h3>
-                                {item.unit && (
-                                  <span className="inline-block mt-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                                    {item.unit}
-                                  </span>
-                                )}
                               </div>
                               <div className="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-xl border border-amber-200/60 text-amber-700 font-extrabold text-xs shrink-0 shadow-2xs">
                                 <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
@@ -970,7 +978,12 @@ export default function ItemsView() {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 shadow-2xl p-6 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 sticky top-0 bg-white z-10 -mx-2 px-2">
-              <h2 className="text-lg font-bold text-slate-800">Edit Item Details</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-800">Edit Item Details</h2>
+                <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
+                  {editingItem.id}
+                </span>
+              </div>
               <button onClick={() => setEditingItem(null)} className="p-1 text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
@@ -1200,6 +1213,9 @@ export default function ItemsView() {
             </div>
             <div className="text-center">
               <h3 className="text-base font-bold text-slate-800">Delete Product?</h3>
+              <p className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 inline-block my-1.5">
+                {deletingItem.id}
+              </p>
               <p className="text-xs text-slate-500 mt-1">
                 Are you sure you want to remove <strong>"{deletingItem.name}"</strong>? This will remove it from Firestore database.
               </p>
@@ -1361,7 +1377,10 @@ export default function ItemsView() {
 
             <form onSubmit={handleMoveItemSubmit} className="space-y-4">
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <p className="text-xs text-slate-500 font-semibold mb-1">Moving Product:</p>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className="text-xs text-slate-500 font-semibold">Moving Product:</p>
+                  <span className="font-mono text-[10px] font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">{movingItem.id}</span>
+                </div>
                 <p className="text-sm font-bold text-slate-800 truncate">{movingItem.name}</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">Current Category: {movingItem.category}</p>
               </div>

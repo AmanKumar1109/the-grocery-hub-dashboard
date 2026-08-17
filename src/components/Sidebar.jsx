@@ -19,7 +19,8 @@ import {
   Star,
   Bell,
   Mail,
-  Gift
+  Gift,
+  Database
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import { useAuth } from '../context/AuthContext';
@@ -206,6 +207,11 @@ export default function Sidebar() {
           name: 'Audit Logs',
           path: '/dashboard/audit-logs',
           icon: ClipboardList
+        },
+        {
+          name: 'Compare Logs',
+          path: '/dashboard/compare-logs',
+          icon: Database
         }
       ]
     }

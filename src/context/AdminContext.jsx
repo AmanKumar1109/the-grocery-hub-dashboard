@@ -278,7 +278,7 @@ export const AdminProvider = ({ children }) => {
   };
 
   // Audit Log Helper
-  const addAuditLog = async (action, details, category = 'General', severity = 'info') => {
+  const addAuditLog = async (action, details, category = 'General', severity = 'info', metadata = {}) => {
     let randomLogCode = generateAlphanumericId(9);
     while (auditLogs.some(l => l.id === `LOG-${randomLogCode}`)) {
       randomLogCode = generateAlphanumericId(9);
@@ -291,7 +291,8 @@ export const AdminProvider = ({ children }) => {
       actor: 'Admin (SuperAdmin)',
       category,
       details,
-      severity
+      severity,
+      ...metadata
     };
     await setDoc(doc(db, 'auditLogs', logId), newLog);
   };
@@ -444,7 +445,23 @@ export const AdminProvider = ({ children }) => {
       createdAt: new Date().toISOString()
     };
     await setDoc(doc(db, 'items', itemId), createdItem);
-    await addAuditLog('ITEM_CREATED', `Added grocery product "${createdItem.name}" (MRP: ₹${mrp}, Sale: ₹${salePrice}, ${offPercentage}% OFF) to Firestore database`, 'Catalog', 'success');
+    await addAuditLog(
+      'ITEM_CREATED',
+      `Added grocery product "${createdItem.name}" (MRP: ₹${mrp}, Sale: ₹${salePrice}, ${offPercentage}% OFF) to Firestore database`,
+      'Catalog',
+      'success',
+      {
+        itemId: createdItem.id,
+        name: createdItem.name,
+        image: createdItem.image || '',
+        category: createdItem.category || '',
+        subcategory: createdItem.subcategory || '',
+        unit: createdItem.unit || '',
+        price: salePrice,
+        sellingPrice: mrp
+      }
+    );
+    return createdItem;
   };
 
   const editItem = async (id, updatedFields) => {
@@ -974,7 +991,6 @@ export const AdminProvider = ({ children }) => {
       addCoupon,
       toggleCouponStatus,
       deleteCoupon,
-      cancelOrder,
       notificationTemplates,
       updateNotificationTemplates,
       globalSettings
