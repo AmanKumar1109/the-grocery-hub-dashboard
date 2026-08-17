@@ -74,7 +74,14 @@ export default function CompareLogsView() {
       // Strictly compare only against logs where action is 'ITEM_CREATED'
       if (log.action !== 'ITEM_CREATED' || !log.details) return;
 
-      // Extract Product Name
+      // 1. Extract Item ID (if stored in log doc or within details)
+      let logItemId = log.itemId || '';
+      if (!logItemId && log.details) {
+        const idMatch = log.details.match(/ITEM-[A-Z0-9-]+/i);
+        if (idMatch) logItemId = idMatch[0];
+      }
+
+      // 2. Extract Product Name
       let productName = '';
       const quoteMatch = log.details.match(/"([^"]+)"/);
       if (quoteMatch && quoteMatch[1]) {
@@ -83,7 +90,7 @@ export default function CompareLogsView() {
         productName = (log.itemName || log.name).trim();
       }
 
-      if (!productName || productName.startsWith('ITEM-') || productName.startsWith('STF-') || productName.startsWith('LOG-') || categories.includes(productName)) {
+      if (!productName || productName.startsWith('STF-') || productName.startsWith('LOG-') || categories.includes(productName)) {
         return;
       }
 
@@ -146,17 +153,20 @@ export default function CompareLogsView() {
         }
       }
 
-      // Check existence in live Firestore catalog
-      const liveItem = items.find(
-        i => (i.name || '').toLowerCase().trim() === normName
-      );
+      // Check existence in live Firestore catalog by Item ID and/or Name
+      const liveItem = items.find(i => {
+        const matchesId = logItemId && i.id && i.id.toLowerCase() === logItemId.toLowerCase();
+        const matchesName = (i.name || '').toLowerCase().trim() === normName;
+        return matchesId || matchesName;
+      });
 
       const isMissing = !liveItem;
       const logMs = getTimeMs(log.timestamp);
 
       if (!map.has(normName) || logMs > (map.get(normName).lastLogMs || 0)) {
         map.set(normName, {
-          id: `RECOVER-${normName.replace(/[^a-z0-9]/g, '-').slice(0, 16)}`,
+          id: logItemId || `RECOVER-${normName.replace(/[^a-z0-9]/g, '-').slice(0, 16)}`,
+          originalItemId: logItemId || null,
           name: productName,
           sellingPrice: mrp > 0 ? String(mrp) : '60',
           price: salePrice > 0 ? String(salePrice) : (mrp > 0 ? String(mrp) : '45'),
@@ -670,7 +680,12 @@ export default function CompareLogsView() {
                         {/* Name & Status */}
                         <td className="py-3.5 px-4">
                           <span className="font-extrabold text-slate-900 text-[13px] block">{prod.name}</span>
-                          <div className="flex items-center gap-1.5 mt-1">
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            {prod.originalItemId && (
+                              <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                ID: {prod.originalItemId}
+                              </span>
+                            )}
                             {prod.isMissing ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md">
                                 <AlertTriangle className="w-3 h-3 text-amber-600" /> Missing from Catalog
