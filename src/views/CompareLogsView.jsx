@@ -39,6 +39,7 @@ export default function CompareLogsView() {
   const [specificDate, setSpecificDate] = useState(''); // 'YYYY-MM-DD'
 
   // Restoration States
+  const [restoreCount, setRestoreCount] = useState(10);
   const [restoringId, setRestoringId] = useState(null);
   const [isBulkRestoring, setIsBulkRestoring] = useState(false);
   const [restoredSuccessMap, setRestoredSuccessMap] = useState({});
@@ -259,7 +260,7 @@ export default function CompareLogsView() {
         price: productToRestore.price || productToRestore.sellingPrice || '45',
         category: productToRestore.category || 'General',
         subcategory: productToRestore.subcategory || '',
-        unit: productToRestore.unit || '',
+        unit: '',
         image: productToRestore.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=80',
         inStock: true,
         isTrending: false,
@@ -281,7 +282,7 @@ export default function CompareLogsView() {
     if (missingProductsList.length === 0) return;
     setIsBulkRestoring(true);
     try {
-      const itemsToRestore = missingProductsList.slice(0, 10);
+      const itemsToRestore = missingProductsList.slice(0, restoreCount);
       for (const prod of itemsToRestore) {
         await addItem({
           name: prod.name.trim(),
@@ -289,7 +290,7 @@ export default function CompareLogsView() {
           price: prod.price || prod.sellingPrice || '45',
           category: prod.category || 'General',
           subcategory: prod.subcategory || '',
-          unit: prod.unit || '',
+          unit: '',
           image: prod.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=80',
           inStock: true,
           isTrending: false,
@@ -439,24 +440,37 @@ export default function CompareLogsView() {
               )}
 
               {missingProductsList.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleRestoreAllMissing}
-                  disabled={isBulkRestoring}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-sm flex items-center gap-2 transition-all cursor-pointer"
-                >
-                  {isBulkRestoring ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Restoring {Math.min(10, missingProductsList.length)} Items...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      <span>Restore {Math.min(10, missingProductsList.length)} Missing (of {missingProductsList.length})</span>
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-1.5 bg-emerald-50/50 rounded-xl p-1 border border-emerald-100">
+                  <input
+                    type="number"
+                    min="1"
+                    max={missingProductsList.length}
+                    value={restoreCount}
+                    onChange={(e) => setRestoreCount(parseInt(e.target.value) || 1)}
+                    onBlur={(e) => setRestoreCount(Math.max(1, Math.min(missingProductsList.length, parseInt(e.target.value) || 1)))}
+                    disabled={isBulkRestoring}
+                    className="w-14 h-8 px-1 text-xs font-bold text-center bg-white border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 text-emerald-800"
+                    title="Number of items to restore"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRestoreAllMissing}
+                    disabled={isBulkRestoring}
+                    className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-lg shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    {isBulkRestoring ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Restoring...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Restore (of {missingProductsList.length})</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
 
               <button
