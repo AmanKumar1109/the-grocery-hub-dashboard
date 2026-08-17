@@ -58,31 +58,6 @@ export const AdminProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [globalSettings, setGlobalSettings] = useState({});
 
-  // Helper to purge auto-seeded dummy data & old food categories from Firestore
-  const purgeDummyDataFromFirestore = async () => {
-    try {
-      const dummyItemIds = ['ITEM-101', 'ITEM-102', 'ITEM-103', 'ITEM-104', 'ITEM-105', 'ITEM-106'];
-      const dummyStaffIds = ['STF-001', 'STF-002', 'STF-003', 'STF-004'];
-      const dummyOrderIds = ['ORD-9481', 'ORD-9482', 'ORD-9483', 'ORD-9470', 'ORD-9468', 'ORD-9455'];
-      const oldFoodCatIds = ['Burgers', 'Burger', 'Pizza', 'Pizzas', 'Salad', 'Salads', 'Drink', 'Drinks', 'Dessert', 'Desserts', 'Starters', 'Main Course', 'Fast Food'];
-
-      for (const id of dummyItemIds) {
-        await deleteDoc(doc(db, 'items', id)).catch(() => { });
-      }
-      for (const id of dummyStaffIds) {
-        await deleteDoc(doc(db, 'staff', id)).catch(() => { });
-      }
-      for (const id of dummyOrderIds) {
-        await deleteDoc(doc(db, 'orders', id)).catch(() => { });
-      }
-      for (const id of oldFoodCatIds) {
-        await deleteDoc(doc(db, 'categories', id)).catch(() => { });
-      }
-    } catch (err) {
-      console.warn("Purge dummy data error:", err);
-    }
-  };
-
   // Audio Ping Notification for New Orders
   const playOrderPingChime = () => {
     try {
@@ -133,14 +108,11 @@ export const AdminProvider = ({ children }) => {
   useEffect(() => {
     (async () => {
       try {
-        purgeDummyDataFromFirestore();
-
         // Items snapshot
         const unsubItems = onSnapshot(collection(db, 'items'), (snap) => {
           const loaded = snap.docs
             .map(d => ({ id: d.id, isVisible: d.data().isVisible !== false, sortOrder: d.data().sortOrder || 0, ...d.data() }))
-            .filter(item => !['ITEM-101', 'ITEM-102', 'ITEM-103', 'ITEM-104', 'ITEM-105', 'ITEM-106'].includes(item.id))
-            .sort((a, b) => a.sortOrder - b.sortOrder);
+            .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
           setItems(loaded);
           setIsLoading(false);
         });
@@ -167,8 +139,7 @@ export const AdminProvider = ({ children }) => {
         // Staff snapshot
         const unsubStaff = onSnapshot(collection(db, 'staff'), (snapshot) => {
           const loadedStaff = snapshot.docs
-            .map(d => ({ id: d.id, ...d.data() }))
-            .filter(s => !['STF-001', 'STF-002', 'STF-003', 'STF-004'].includes(s.id));
+            .map(d => ({ id: d.id, ...d.data() }));
           setStaff(loadedStaff);
         });
 
@@ -178,23 +149,12 @@ export const AdminProvider = ({ children }) => {
 
         // Orders snapshot with audio ping for new incoming orders
         let isFirstOrdersLoad = true;
-        const unsubOrders = onSnapshot(collection(db, 'orders'), async (snap) => {
-          const dummyOrderIds = ['ORD-9481', 'ORD-9482', 'ORD-9483', 'ORD-9470', 'ORD-9468', 'ORD-9455'];
-          const loadedOrders = [];
-
-          for (const d of snap.docs) {
-            // Auto-delete ghost orders with random document IDs or Valued Customer placeholder
-            if (!d.id.startsWith('ORD-') || dummyOrderIds.includes(d.id) || d.data().customerName === 'Valued Customer') {
-              await deleteDoc(doc(db, 'orders', d.id)).catch(() => { });
-              continue;
-            }
-            loadedOrders.push({ id: d.id, ...d.data() });
-          }
-
+        const unsubOrders = onSnapshot(collection(db, 'orders'), (snap) => {
+          const loadedOrders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
           loadedOrders.sort((a, b) => getTimeMs(b.createdAt || b.updatedAt) - getTimeMs(a.createdAt || a.updatedAt));
 
           if (!isFirstOrdersLoad) {
-            const hasNewIncoming = snap.docChanges().some(change => change.type === 'added' && change.doc.id.startsWith('ORD-'));
+            const hasNewIncoming = snap.docChanges().some(change => change.type === 'added');
             if (hasNewIncoming) {
               playOrderPingChime();
             }
@@ -307,9 +267,19 @@ export const AdminProvider = ({ children }) => {
 
   const earnings = calculateEarnings();
 
+  // Helper to generate secure 9-character uppercase alphanumeric IDs (36^9 = ~101.5 Trillion unique combinations)
+  const generateAlphanumericId = (length = 9) => {
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
   // Audit Log Helper
   const addAuditLog = async (action, details, category = 'General', severity = 'info') => {
-    const logId = `LOG-${Date.now().toString().slice(-4)}`;
+    const logId = `LOG-${generateAlphanumericId(9)}`;
     const newLog = {
       id: logId,
       timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
@@ -425,7 +395,7 @@ export const AdminProvider = ({ children }) => {
     // 3. Delete old category doc
     await deleteDoc(doc(db, 'categories', oldName));
 
-    await addAuditLog('CATEGORY_RENAMED', `Renamed category "${oldName}" to "${trimmedNew}" and updated ${itemsToUpdate.length} items.`, 'Catalog', 'warning');
+    await addAuditLog('CATEGORY_RENAMED', `Renamed category "${oldName}" to "${trimmedNew}" and updated ${itemsToUpdate.length} items.`, 'Catalog', 'info');
     return true;
   };
 
@@ -440,7 +410,14 @@ export const AdminProvider = ({ children }) => {
     } else if (finalCategory !== 'General') {
       await addCategory(finalCategory);
     }
-    const itemId = `ITEM-${Math.floor(100 + Math.random() * 900)}`;
+
+    // Generate 9-character uppercase alphanumeric unique ID with duplicate collision check
+    let random9Code = generateAlphanumericId(9);
+    while (items.some(i => i.id === `ITEM-${random9Code}`)) {
+      random9Code = generateAlphanumericId(9);
+    }
+    const itemId = `ITEM-${random9Code}`;
+
     const mrp = parseFloat(newItem.sellingPrice) || 0;
     const salePrice = parseFloat(newItem.price) || 0;
     const offPercentage = (mrp > 0 && salePrice > 0 && mrp > salePrice)
@@ -464,12 +441,14 @@ export const AdminProvider = ({ children }) => {
     };
     await setDoc(doc(db, 'items', itemId), createdItem);
     await addAuditLog('ITEM_CREATED', `Added grocery product "${createdItem.name}" (MRP: ₹${mrp}, Sale: ₹${salePrice}, ${offPercentage}% OFF) to Firestore database`, 'Catalog', 'success');
-    return createdItem;
   };
 
   const editItem = async (id, updatedFields) => {
-    const finalCategory = updatedFields.category && updatedFields.category.trim() ? updatedFields.category.trim() : 'General';
-    if (finalCategory && finalCategory !== 'General' && !categories.includes(finalCategory)) {
+    let finalCategory = updatedFields.category && updatedFields.category.trim() ? updatedFields.category.trim() : 'General';
+    const existingMatch = categories.find(c => c.toLowerCase() === finalCategory.toLowerCase());
+    if (existingMatch) {
+      finalCategory = existingMatch;
+    } else if (finalCategory && finalCategory !== 'General') {
       await addCategory(finalCategory);
     }
     const mrp = parseFloat(updatedFields.sellingPrice) || 0;
@@ -488,7 +467,7 @@ export const AdminProvider = ({ children }) => {
       isBogo: !!updatedFields.isBogo,
       recentBuyers: updatedFields.recentBuyers ? parseInt(updatedFields.recentBuyers) || 0 : 0
     });
-    await addAuditLog('ITEM_UPDATED', `Updated product "${updatedFields.name || id}" in Firestore database`, 'Catalog', 'warning');
+    await addAuditLog('ITEM_UPDATED', `Updated product "${updatedFields.name || id}" in Firestore database`, 'Catalog', 'info');
   };
 
   const toggleItemTrending = async (id, currentIsTrending) => {
@@ -523,7 +502,7 @@ export const AdminProvider = ({ children }) => {
       'ITEM_VISIBILITY_TOGGLED',
       `Set item "${target?.name || id}" visibility to ${newVis ? 'Visible (Active)' : 'Hidden (Inactive)'}`,
       'Catalog',
-      newVis ? 'success' : 'warning'
+      newVis ? 'success' : 'info'
     );
   };
 
@@ -535,7 +514,7 @@ export const AdminProvider = ({ children }) => {
       'ITEM_STOCK_TOGGLED',
       `Updated stock for "${target?.name || id}" to ${newStock ? 'In Stock' : 'Out of Stock'}`,
       'Catalog',
-      newStock ? 'success' : 'warning'
+      newStock ? 'success' : 'info'
     );
   };
 
@@ -727,7 +706,7 @@ export const AdminProvider = ({ children }) => {
       greetingTimestamp: new Date().toISOString()
     };
     await updateDoc(doc(db, 'orders', orderId), updateData);
-    await addAuditLog('ORDER_DELAY_NOTIFIED', `Sent delay notification for Order #${orderId}`, 'Orders', 'warning');
+    await addAuditLog('ORDER_DELAY_NOTIFIED', `Sent delay notification for Order #${orderId}`, 'Orders', 'info');
   };
 
   const recordPrintBill = async (orderId) => {
@@ -750,22 +729,27 @@ export const AdminProvider = ({ children }) => {
       });
       await addAuditLog('PARTNER_ASSIGNED', `Assigned ${partner.name} to Order #${orderId}`, 'Orders', 'success');
     } else {
-      await addAuditLog('PARTNER_UNASSIGNED', `Unassigned delivery partner from Order #${orderId}`, 'Orders', 'warning');
+      await addAuditLog('PARTNER_UNASSIGNED', `Unassigned delivery partner from Order #${orderId}`, 'Orders', 'info');
     }
   };
 
   // Actions for Staff (Firebase Auth + Firestore)
   const addStaff = async (newPerson) => {
     let userUid = null;
+    let randomStaff9Code = generateAlphanumericId(9);
+    while (staff.some(s => s.id === `STF-${randomStaff9Code}`)) {
+      randomStaff9Code = generateAlphanumericId(9);
+    }
+    const staffId = `STF-${randomStaff9Code}`;
+
     try {
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, newPerson.email, newPerson.password);
       userUid = userCredential.user.uid;
     } catch (authErr) {
       console.warn("Firebase Auth Notice:", authErr);
-      userUid = `STF-${Math.floor(100 + Math.random() * 900)}`;
+      userUid = staffId;
     }
 
-    const staffId = `STF-${Math.floor(100 + Math.random() * 900)}`;
     const createdStaff = {
       id: staffId,
       uid: userUid,
@@ -815,7 +799,7 @@ export const AdminProvider = ({ children }) => {
 
   const deleteComplaint = async (complaintId) => {
     await deleteDoc(doc(db, 'complaints', complaintId));
-    await addAuditLog('COMPLAINT_DELETED', `Deleted Complaint #${complaintId} from database`, 'Support', 'warning');
+    await addAuditLog('COMPLAINT_DELETED', `Deleted Complaint #${complaintId} from database`, 'Support', 'danger');
   };
 
   // Fetch user's saved/wishlist products from subcollections or document fields
@@ -931,7 +915,7 @@ export const AdminProvider = ({ children }) => {
   const deleteCoupon = async (id, code) => {
     try {
       await deleteDoc(doc(db, 'coupons', id));
-      await addAuditLog('DELETE_COUPON', `Deleted coupon ${code}`, 'Admin', 'warning');
+      await addAuditLog('DELETE_COUPON', `Deleted coupon ${code}`, 'Admin', 'danger');
       return true;
     } catch (e) {
       console.error(e);
