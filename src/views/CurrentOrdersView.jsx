@@ -912,12 +912,7 @@ export default function CurrentOrdersView() {
                   try {
                     // Verify OTP
                     if (otpVerifyOrder.deliveryOtp && adminOtpInput === otpVerifyOrder.deliveryOtp) {
-                      // Check if already verified by admin
-                      if (otpVerifyOrder.adminOtpVerified) {
-                        setAdminOtpError('Admin has already verified this OTP.');
-                        setAdminOtpVerifying(false);
-                        return;
-                      }
+
 
                       // Mark admin OTP as verified + deliver immediately
                       await updateDoc(doc(db, 'orders', otpVerifyOrder.id), {

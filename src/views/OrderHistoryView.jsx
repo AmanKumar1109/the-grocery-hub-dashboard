@@ -501,12 +501,6 @@ export default function OrderHistoryView() {
                   setAdminOtpError('');
                   try {
                     if (otpVerifyOrder.deliveryOtp && adminOtpInput === otpVerifyOrder.deliveryOtp) {
-                      if (otpVerifyOrder.adminOtpVerified) {
-                        setAdminOtpError('Admin has already verified this OTP.');
-                        setAdminOtpVerifying(false);
-                        return;
-                      }
-
                       // Mark admin OTP as verified + deliver immediately
                       await updateDoc(doc(db, 'orders', otpVerifyOrder.id), {
                         adminOtpVerified: true,
