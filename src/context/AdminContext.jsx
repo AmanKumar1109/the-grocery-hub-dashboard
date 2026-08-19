@@ -947,6 +947,16 @@ export const AdminProvider = ({ children }) => {
     }
   };
 
+  const deleteAuditLog = async (logId) => {
+    try {
+      await deleteDoc(doc(db, 'auditLogs', logId));
+      return true;
+    } catch (e) {
+      console.error("Error deleting audit log:", e);
+      return false;
+    }
+  };
+
   return (
     <AdminContext.Provider value={{
       categories,
@@ -990,6 +1000,7 @@ export const AdminProvider = ({ children }) => {
       toggleUserBlockStatus,
       updateUserAdminNote,
       addAuditLog,
+      deleteAuditLog,
       coupons,
       addCoupon,
       toggleCouponStatus,

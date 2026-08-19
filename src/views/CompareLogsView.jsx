@@ -20,7 +20,8 @@ import {
   ShieldCheck,
   Calendar,
   CalendarDays,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
@@ -29,7 +30,7 @@ import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 
 export default function CompareLogsView() {
-  const { auditLogs, items, categories, categoryDocs, addItem } = useAdmin();
+  const { auditLogs, items, categories, categoryDocs, addItem, deleteAuditLog } = useAdmin();
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,6 +46,8 @@ export default function CompareLogsView() {
   const [restoredSuccessMap, setRestoredSuccessMap] = useState({});
   const [editingRecoverItem, setEditingRecoverItem] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [isDeletingId, setIsDeletingId] = useState(null);
+  const [logToDelete, setLogToDelete] = useState(null);
 
   // Helper to safely extract milliseconds from any date/timestamp format
   const getTimeMs = (val) => {
@@ -303,6 +306,20 @@ export default function CompareLogsView() {
       console.error("Bulk restore error:", err);
     } finally {
       setIsBulkRestoring(false);
+    }
+  };
+
+  // Delete Log handler
+  const confirmDeleteLog = async () => {
+    if (!logToDelete) return;
+    setIsDeletingId(logToDelete);
+    try {
+      await deleteAuditLog(logToDelete);
+      setLogToDelete(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsDeletingId(null);
     }
   };
 
@@ -742,51 +759,68 @@ export default function CompareLogsView() {
 
                         {/* Action / Restore */}
                         <td className="py-3.5 px-4 text-right">
-                          {prod.isMissing ? (
-                            <div className="flex items-center justify-end gap-2">
-                              {/* Edit Modal Button */}
-                              <button
-                                type="button"
-                                onClick={() => setEditingRecoverItem(prod)}
-                                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                                title="Edit details before re-uploading"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
+                          <div className="flex items-center justify-end gap-2">
+                            {prod.isMissing ? (
+                              <>
+                                {/* Edit Modal Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingRecoverItem(prod)}
+                                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                                  title="Edit details before re-uploading"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
 
-                              {/* Re-Upload / Restore Button */}
-                              <button
-                                type="button"
-                                onClick={() => handleRestoreProduct(prod)}
-                                disabled={isRestoring || isRestored}
-                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer ${isRestored
-                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                  }`}
-                              >
-                                {isRestoring ? (
-                                  <>
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    <span>Saving...</span>
-                                  </>
-                                ) : isRestored ? (
-                                  <>
-                                    <Check className="w-3.5 h-3.5 text-emerald-700" />
-                                    <span>Restored!</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <PlusCircle className="w-3.5 h-3.5" />
-                                    <span>+ Re-Upload</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-xs font-bold text-emerald-600 flex items-center justify-end gap-1">
-                              <Check className="w-4 h-4" /> Active
-                            </span>
-                          )}
+                                {/* Re-Upload / Restore Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRestoreProduct(prod)}
+                                  disabled={isRestoring || isRestored}
+                                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer ${isRestored
+                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                    }`}
+                                >
+                                  {isRestoring ? (
+                                    <>
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      <span>Saving...</span>
+                                    </>
+                                  ) : isRestored ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5 text-emerald-700" />
+                                      <span>Restored!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <PlusCircle className="w-3.5 h-3.5" />
+                                      <span>+ Re-Upload</span>
+                                    </>
+                                  )}
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 mr-2">
+                                <Check className="w-4 h-4" /> Active
+                              </span>
+                            )}
+                            
+                            {/* Delete Log Button */}
+                            <button
+                              type="button"
+                              onClick={() => setLogToDelete(prod.lastLogId)}
+                              disabled={isDeletingId === prod.lastLogId}
+                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold rounded-xl text-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                              title="Delete this comparison log permanently"
+                            >
+                              {isDeletingId === prod.lastLogId ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -937,6 +971,48 @@ export default function CompareLogsView() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {logToDelete && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white w-full max-w-sm rounded-3xl border border-slate-200 shadow-2xl p-6 space-y-5 text-center">
+            <div className="mx-auto w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mb-4">
+              <Trash2 className="w-6 h-6 text-rose-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-800">Delete Log?</h3>
+              <p className="text-xs font-semibold text-slate-500 mt-2 leading-relaxed">
+                Are you sure you want to permanently delete this comparison log? This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setLogToDelete(null)}
+                className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold cursor-pointer transition-colors"
+                disabled={isDeletingId === logToDelete}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteLog}
+                disabled={isDeletingId === logToDelete}
+                className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors disabled:opacity-50"
+              >
+                {isDeletingId === logToDelete ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Yes, Delete</span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
