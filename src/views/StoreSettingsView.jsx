@@ -716,7 +716,7 @@ export default function StoreSettingsView() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Normal Theme */}
               <button
                 type="button"
@@ -809,6 +809,41 @@ export default function StoreSettingsView() {
                       <p className="text-xs text-slate-400">Gold + Maroon festive</p>
                     </div>
                     {settings.activeTheme === 'diwali' && (
+                      <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                        <CheckCircle className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </button>
+
+              {/* Raksha Bandhan Theme */}
+              <button
+                type="button"
+                onClick={() => handleThemeChange('raksha-bandhan')}
+                className={`relative rounded-2xl border-2 overflow-hidden cursor-pointer transition-all text-left ${
+                  settings.activeTheme === 'raksha-bandhan'
+                    ? 'border-rose-500 shadow-lg shadow-rose-100'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                {/* Preview: crimson-gold gradient */}
+                <div className="h-16 bg-gradient-to-r from-[#C41E56] via-[#D4A017] to-[#e63370] flex items-center justify-center gap-2">
+                  <span className="text-2xl">🎀</span>
+                  <div className="flex gap-1">
+                    <div className="w-3 h-3 rounded-full bg-pink-200" />
+                    <div className="w-3 h-3 rounded-full bg-yellow-300" />
+                    <div className="w-3 h-3 rounded-full bg-rose-200" />
+                  </div>
+                  <span className="text-2xl">🎁</span>
+                </div>
+                <div className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">Raksha Bandhan 🎀</p>
+                      <p className="text-xs text-slate-400">Crimson + Gold festive</p>
+                    </div>
+                    {settings.activeTheme === 'raksha-bandhan' && (
                       <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
                         <CheckCircle className="w-4 h-4 text-white" />
                       </div>
