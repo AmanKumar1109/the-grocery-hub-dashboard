@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Save, Loader2, Phone, Mail, Share2, Globe, Link as LinkIcon, Truck, Receipt, CheckCircle, AlertTriangle, Plus, Trash2, Star, Megaphone, Search, X, Sparkles, Table, RefreshCw, ListOrdered, ChevronUp, ChevronDown, Gift, PenLine } from 'lucide-react';
+import { Save, Loader2, Phone, Mail, Share2, Globe, Link as LinkIcon, Truck, Receipt, CheckCircle, AlertTriangle, Plus, Trash2, Star, Megaphone, Search, X, Sparkles, Table, RefreshCw, ListOrdered, ChevronUp, ChevronDown, Gift, PenLine, Power, Clock, Calendar, ShieldCheck, Check } from 'lucide-react';
 import ImageUploadInput from '../components/ImageUploadInput';
 import { useAdmin } from '../context/AdminContext';
 
@@ -60,6 +60,11 @@ export default function StoreSettingsView() {
   };
   
   const [settings, setSettings] = useState({
+    isAcceptingOrders: true,
+    isScheduledPause: false,
+    pauseStartDateTime: '',
+    pauseEndDateTime: '',
+    orderPauseMessage: 'Online ordering is temporarily paused. You can still browse our products and prices!',
     supportPhone: '',
     whatsappNumber: '',
     supportEmail: '',
@@ -651,6 +656,106 @@ export default function StoreSettingsView() {
     }
   };
 
+  // Instantly toggle order acceptance directly to Firestore without having to scroll to Save
+  const handleInstantToggleOrders = async () => {
+    const nextVal = settings.isAcceptingOrders === false ? true : false;
+    setSettings(prev => ({ ...prev, isAcceptingOrders: nextVal }));
+    try {
+      await setDoc(SETTINGS_DOC_REF, { isAcceptingOrders: nextVal }, { merge: true });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Failed to update order acceptance:', err);
+      setError('Failed to update store order status.');
+    }
+  };
+
+  const handleApplyPausePreset = (presetType) => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const toLocalISO = (d) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+    const startISO = toLocalISO(now);
+    let endISO = '';
+
+    if (presetType === '2hours') {
+      const end = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+      endISO = toLocalISO(end);
+    } else if (presetType === 'tonight') {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(8, 0, 0, 0);
+      endISO = toLocalISO(tomorrow);
+    } else if (presetType === '24hours') {
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      endISO = toLocalISO(tomorrow);
+    }
+
+    setSettings(prev => ({
+      ...prev,
+      isScheduledPause: true,
+      pauseStartDateTime: startISO,
+      pauseEndDateTime: endISO
+    }));
+  };
+
+  const handleClearSchedule = () => {
+    setSettings(prev => ({
+      ...prev,
+      isScheduledPause: false,
+      pauseStartDateTime: '',
+      pauseEndDateTime: ''
+    }));
+  };
+
+  const storeScheduleStatus = useMemo(() => {
+    const now = new Date();
+    if (settings.isAcceptingOrders === false) {
+      return {
+        type: 'manual_paused',
+        badge: 'Orders Paused (Manual)',
+        color: 'rose',
+        description: 'Online ordering is manually turned OFF. Customers can browse products and prices, but cannot add to cart or place orders.'
+      };
+    }
+
+    if (settings.isScheduledPause && settings.pauseEndDateTime) {
+      const start = settings.pauseStartDateTime ? new Date(settings.pauseStartDateTime) : null;
+      const end = new Date(settings.pauseEndDateTime);
+
+      if (!isNaN(end.getTime())) {
+        const hasStarted = !start || isNaN(start.getTime()) || now >= start;
+        const hasEnded = now >= end;
+
+        if (hasStarted && !hasEnded) {
+          const formattedEnd = end.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+          return {
+            type: 'scheduled_active',
+            badge: `Scheduled Pause Active (Until ${formattedEnd})`,
+            color: 'amber',
+            description: `Store is temporarily paused for orders until ${formattedEnd}. It will automatically reopen once this time passes!`
+          };
+        } else if (!hasStarted) {
+          const formattedStart = start.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+          return {
+            type: 'scheduled_upcoming',
+            badge: `Pause Scheduled at ${formattedStart}`,
+            color: 'blue',
+            description: `Store is currently accepting orders. Scheduled to pause on ${formattedStart}.`
+          };
+        }
+      }
+    }
+
+    return {
+      type: 'open',
+      badge: 'Open & Accepting Orders',
+      color: 'emerald',
+      description: 'Store is live! Customers can browse, add to cart, and place orders normally.'
+    };
+  }, [settings.isAcceptingOrders, settings.isScheduledPause, settings.pauseStartDateTime, settings.pauseEndDateTime]);
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
@@ -702,6 +807,252 @@ export default function StoreSettingsView() {
         )}
 
         <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+          {/* ============================================================
+              ⚡ STORE ORDER STATUS & SCHEDULED PAUSE
+              Allows admin to pause orders or set a date/time schedule.
+              Users can still freely browse the website catalog.
+              ============================================================ */}
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-6 md:col-span-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div className="flex items-center gap-3.5">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-md transition-colors ${
+                  storeScheduleStatus.color === 'emerald'
+                    ? 'bg-emerald-500 text-white shadow-emerald-200'
+                    : storeScheduleStatus.color === 'rose'
+                    ? 'bg-rose-500 text-white shadow-rose-200'
+                    : storeScheduleStatus.color === 'amber'
+                    ? 'bg-amber-500 text-white shadow-amber-200'
+                    : 'bg-blue-500 text-white shadow-blue-200'
+                }`}>
+                  <Power className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg font-black text-slate-900 tracking-tight">Store Order Acceptance</h2>
+                    <span className={`text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1.5 ${
+                      storeScheduleStatus.color === 'emerald'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : storeScheduleStatus.color === 'rose'
+                        ? 'bg-rose-100 text-rose-800'
+                        : storeScheduleStatus.color === 'amber'
+                        ? 'bg-amber-100 text-amber-900 animate-pulse'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      <span className={`w-2 h-2 rounded-full ${
+                        storeScheduleStatus.color === 'emerald'
+                          ? 'bg-emerald-500'
+                          : storeScheduleStatus.color === 'rose'
+                          ? 'bg-rose-500'
+                          : storeScheduleStatus.color === 'amber'
+                          ? 'bg-amber-500'
+                          : 'bg-blue-500'
+                      }`} />
+                      {storeScheduleStatus.badge}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium mt-1">
+                    Control online order placement. When orders are paused, customers can still browse all products, prices, and categories.
+                  </p>
+                </div>
+              </div>
+
+              {/* Master 1-Click Toggle Button */}
+              <button
+                type="button"
+                onClick={handleInstantToggleOrders}
+                className={`flex items-center justify-center gap-2.5 px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-md cursor-pointer active:scale-95 shrink-0 ${
+                  settings.isAcceptingOrders === false
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
+                    : 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200'
+                }`}
+                title="Click to toggle immediately"
+              >
+                <Power className="w-4 h-4" />
+                {settings.isAcceptingOrders === false ? 'Turn Orders ON (Resume)' : 'Pause Orders Now'}
+              </button>
+            </div>
+
+            {/* Status explanation alert box */}
+            <div className={`p-4 rounded-2xl border flex items-start gap-3 ${
+              storeScheduleStatus.color === 'emerald'
+                ? 'bg-emerald-50/60 border-emerald-200 text-emerald-900'
+                : storeScheduleStatus.color === 'rose'
+                ? 'bg-rose-50/60 border-rose-200 text-rose-900'
+                : storeScheduleStatus.color === 'amber'
+                ? 'bg-amber-50/60 border-amber-200 text-amber-900'
+                : 'bg-blue-50/60 border-blue-200 text-blue-900'
+            }`}>
+              <div className="mt-0.5 shrink-0">
+                {storeScheduleStatus.color === 'emerald' ? (
+                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                ) : storeScheduleStatus.color === 'rose' ? (
+                  <AlertTriangle className="w-5 h-5 text-rose-600" />
+                ) : (
+                  <Clock className="w-5 h-5 text-amber-600" />
+                )}
+              </div>
+              <div className="text-xs font-semibold leading-relaxed">
+                <p className="font-bold">{storeScheduleStatus.badge}</p>
+                <p className="opacity-90 mt-0.5">{storeScheduleStatus.description}</p>
+              </div>
+            </div>
+
+            {/* Scheduled Pause (Date & Time) */}
+            <div className="bg-slate-50/80 rounded-2xl p-5 border border-slate-200/80 space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2.5">
+                  <Calendar className="w-4 h-4 text-indigo-600" />
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">Scheduled Off Window (Date & Time)</h3>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      Set a time range when the store will be off. The website automatically reopens when the end time is reached!
+                    </p>
+                  </div>
+                </div>
+
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="isScheduledPause"
+                    checked={settings.isScheduledPause || false}
+                    onChange={handleChange}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  <span className="ml-2.5 text-xs font-extrabold text-slate-700">
+                    {settings.isScheduledPause ? 'Schedule Enabled' : 'Schedule Disabled'}
+                  </span>
+                </label>
+              </div>
+
+              {settings.isScheduledPause && (
+                <div className="space-y-4 pt-2 border-t border-slate-200/60 animate-in fade-in duration-200">
+                  {/* Quick Preset Buttons */}
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                      ⚡ Quick Schedule Presets
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPausePreset('2hours')}
+                        className="px-3.5 py-2 bg-white hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 shadow-sm transition-all cursor-pointer"
+                      >
+                        ⏱️ Pause 2 Hours
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPausePreset('tonight')}
+                        className="px-3.5 py-2 bg-white hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 shadow-sm transition-all cursor-pointer"
+                      >
+                        🌙 Pause for Tonight (Reopen 8:00 AM)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPausePreset('24hours')}
+                        className="px-3.5 py-2 bg-white hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 shadow-sm transition-all cursor-pointer"
+                      >
+                        📅 Pause 24 Hours
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleClearSchedule}
+                        className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 shadow-sm transition-all cursor-pointer"
+                      >
+                        ✕ Clear Schedule
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Date & Time Inputs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                        Off Start Date & Time
+                      </label>
+                      <input
+                        type="datetime-local"
+                        name="pauseStartDateTime"
+                        value={settings.pauseStartDateTime || ''}
+                        onChange={handleChange}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-1 block">
+                        Leave blank to pause immediately when enabled
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                        Reopen Date & Time (Auto-Resume) *
+                      </label>
+                      <input
+                        type="datetime-local"
+                        name="pauseEndDateTime"
+                        value={settings.pauseEndDateTime || ''}
+                        onChange={handleChange}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-1 block">
+                        Orders automatically resume when this time is reached
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Custom Customer Notice Message */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700">
+                Customer Notice Message (Shown when orders are paused)
+              </label>
+              <input
+                type="text"
+                name="orderPauseMessage"
+                value={settings.orderPauseMessage || ''}
+                onChange={handleChange}
+                placeholder="e.g. We are temporarily not accepting orders. Feel free to browse our products!"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <p className="text-[11px] text-slate-400 font-medium">
+                This message appears in the top announcement bar, product cards, cart drawer, and checkout page.
+              </p>
+            </div>
+
+            {/* Customer Banner Preview */}
+            <div className="pt-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                👀 Live Customer Banner Preview (When Paused)
+              </span>
+              <div className="w-full bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white py-2.5 px-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-2.5 shadow-sm text-center md:text-left">
+                <div className="flex items-center gap-2">
+                  <span className="bg-black/30 text-amber-200 px-2 py-0.5 rounded-md font-black text-[10px] uppercase tracking-wider">
+                    ⏸️ Orders Paused
+                  </span>
+                  <span className="text-xs font-bold text-white">
+                    {settings.orderPauseMessage || 'Online ordering is temporarily paused. You can still browse our catalog freely!'}
+                  </span>
+                </div>
+
+                {settings.isScheduledPause && settings.pauseEndDateTime ? (
+                  <div className="bg-black/40 backdrop-blur-md px-3 py-1 rounded-xl border border-white/20 text-xs font-black text-white shrink-0">
+                    <span className="text-[9px] text-amber-300 block uppercase tracking-wider">Band Rehne Ka Samay:</span>
+                    <span>
+                      {settings.pauseStartDateTime ? new Date(settings.pauseStartDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Now'}
+                      {' '}➔{' '}
+                      {new Date(settings.pauseEndDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-[10px] font-bold bg-black/25 px-2.5 py-0.5 rounded-full text-amber-100">
+                    Catalog Browsing Active
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* ============================================================
               🎨 SITE THEME SELECTOR
