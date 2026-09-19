@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -34,6 +34,8 @@ import {
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
 import ImageUploadInput from '../components/ImageUploadInput';
+import MultiImageUploadInput from '../components/MultiImageUploadInput';
+import BrandSelector from '../components/BrandSelector';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import * as XLSX from 'xlsx';
@@ -65,7 +67,7 @@ function SortableItemWrapper({ id, children }) {
 }
 
 export default function ItemsView() {
-  const { items, categories, categoryDocs, addCategory, addSubcategory, renameSubcategory, deleteSubcategory, deleteCategory, renameCategory, editItem, toggleItemTrending, toggleItemBogo, toggleItemVisibility, toggleItemStock, deleteItem, bulkUpdateItems, bulkDeleteItems, reorderItemsBatch, globalSettings } = useAdmin();
+  const { items, categories, categoryDocs, addCategory, addSubcategory, renameSubcategory, deleteSubcategory, deleteCategory, renameCategory, editItem, toggleItemTrending, toggleItemBogo, toggleItemVisibility, toggleItemStock, deleteItem, bulkUpdateItems, bulkDeleteItems, reorderItemsBatch, globalSettings, brands = [] } = useAdmin();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSubcategory, setSelectedSubcategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,6 +103,9 @@ export default function ItemsView() {
 
   const [editFormData, setEditFormData] = useState({
     name: '',
+    description: '',
+    brand: '',
+    brandLogo: '',
     category: '',
     subcategory: '',
     price: '',
@@ -110,10 +115,28 @@ export default function ItemsView() {
     isTrending: false,
     isBogo: false,
     image: '',
+    images: [],
     unit: '',
     maxQuantity: '',
     tags: []
   });
+
+  // Unique brand options from items + popular brands
+  const brandOptions = useMemo(() => {
+    const popularBrands = [
+      'Amul', 'Aashirvaad', 'Tata', 'Fortune', 'Nestle', 'Britannia',
+      'Dabur', 'Haldiram\'s', 'Parle', 'Saffola', 'Dettol', 'Surf Excel',
+      'Colgate', 'Cadbury', 'Patanjali', 'Everest', 'MDH', 'Catch', 'Mother Dairy',
+      'Kissan', 'Maggi', 'Kellogg\'s', 'Lipton', 'Red Label', 'Brooke Bond'
+    ];
+    const set = new Set(popularBrands);
+    (items || []).forEach(i => {
+      if (i.brand && typeof i.brand === 'string' && i.brand.trim()) {
+        set.add(i.brand.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [items]);
 
   const listRef = useRef(null);
 
@@ -182,6 +205,7 @@ export default function ItemsView() {
 
     const q = searchQuery.toLowerCase();
     const matchesSearch = (item.name || '').toLowerCase().includes(q) || 
+                          (item.brand || '').toLowerCase().includes(q) || 
                           (item.id || '').toLowerCase().includes(q) || 
                           (item.category || '').toLowerCase().includes(q) || 
                           (item.subcategory || '').toLowerCase().includes(q);
@@ -208,8 +232,12 @@ export default function ItemsView() {
 
   const handleStartEdit = (item) => {
     setEditingItem(item);
+    const matchedBrand = brands.find(b => b.name?.toLowerCase().trim() === item.brand?.toLowerCase().trim());
     setEditFormData({
       name: item.name,
+      description: item.description || '',
+      brand: item.brand || '',
+      brandLogo: item.brandLogo || matchedBrand?.logo || '',
       category: item.category,
       subcategory: item.subcategory || '',
       price: item.price,
@@ -219,6 +247,7 @@ export default function ItemsView() {
       isTrending: !!item.isTrending,
       isBogo: !!item.isBogo,
       image: item.image,
+      images: Array.isArray(item.images) && item.images.length > 0 ? item.images : (item.image ? [item.image] : []),
       unit: item.unit || '',
       maxQuantity: item.maxQuantity !== undefined ? item.maxQuantity : '',
       tags: item.tags || []
@@ -228,7 +257,18 @@ export default function ItemsView() {
   const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!editingItem) return;
-    await editItem(editingItem.id, editFormData);
+    const primaryImage = (editFormData.images && editFormData.images.length > 0)
+      ? editFormData.images[0]
+      : (editFormData.image || '');
+    const allImages = (editFormData.images && editFormData.images.length > 0)
+      ? editFormData.images
+      : (primaryImage ? [primaryImage] : []);
+
+    await editItem(editingItem.id, {
+      ...editFormData,
+      image: primaryImage,
+      images: allImages
+    });
     setEditingItem(null);
   };
 
@@ -308,8 +348,11 @@ export default function ItemsView() {
     const dataToExport = items.map(item => ({
       ID: item.id,
       Name: item.name,
+      Brand: item.brand || '',
       Category: item.category || 'General',
       Subcategory: item.subcategory || 'None',
+      Description: item.description || '',
+      Unit: item.unit || '',
       MRP: item.sellingPrice || 0,
       SellingPrice: item.price || 0,
       Discount_Percentage: item.offPercentage || 0,
@@ -546,7 +589,7 @@ export default function ItemsView() {
                         {/* Item Image & Badges Container */}
                         <div className="relative h-52 overflow-hidden bg-slate-900 group">
                           <img
-                            src={item.image || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&auto=format&fit=crop&q=80'}
+                            src={item.image || (Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : '') || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&auto=format&fit=crop&q=80'}
                             alt={item.name}
                             className={`w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out ${
                               !isVisible ? 'grayscale-50' : ''
@@ -631,11 +674,29 @@ export default function ItemsView() {
                               <span className="font-mono text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md border border-slate-200/70 inline-flex items-center gap-1 transition-colors select-all" title="Product ID">
                                 <span className="text-slate-400 font-semibold text-[9px]">ID:</span> {item.id}
                               </span>
-                              {item.unit && (
-                                <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/50">
-                                  {item.unit}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                                {item.brand && (() => {
+                                  const brandLogoUrl = item.brandLogo || brands.find(b => b.name?.toLowerCase().trim() === item.brand?.toLowerCase().trim())?.logo;
+                                  return (
+                                    <span className="text-[10px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200/70 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-2xs" title={`Brand: ${item.brand}`}>
+                                      {brandLogoUrl && (
+                                        <img
+                                          src={brandLogoUrl}
+                                          alt={item.brand}
+                                          className="w-3.5 h-3.5 rounded-full object-contain bg-white border border-indigo-100 shrink-0"
+                                          onError={(e) => { e.target.style.display = 'none'; }}
+                                        />
+                                      )}
+                                      <span>{item.brand}</span>
+                                    </span>
+                                  );
+                                })()}
+                                {item.unit && (
+                                  <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/50">
+                                    {item.unit}
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             <div className="flex items-start justify-between gap-2">
@@ -643,6 +704,11 @@ export default function ItemsView() {
                                 <h3 className="font-extrabold text-slate-900 text-base leading-snug group-hover:text-emerald-600 transition-colors line-clamp-2">
                                   {item.name}
                                 </h3>
+                                {item.description && (
+                                  <p className="text-[11px] text-slate-500 line-clamp-2 mt-1 leading-relaxed" title={item.description}>
+                                    {item.description}
+                                  </p>
+                                )}
                               </div>
                               <div className="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-xl border border-amber-200/60 text-amber-700 font-extrabold text-xs shrink-0 shadow-2xs">
                                 <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
@@ -990,15 +1056,29 @@ export default function ItemsView() {
             </div>
 
             <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Item Name</label>
+                  <label className="font-bold text-slate-700 block mb-1">Product Name *</label>
                   <input
                     type="text"
                     required
                     value={editFormData.name}
                     onChange={e => setEditFormData({ ...editFormData, name: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <BrandSelector
+                    label="Brand Name"
+                    value={editFormData.brand || ''}
+                    logo={editFormData.brandLogo || ''}
+                    onChange={({ name, logo }) => {
+                      setEditFormData(prev => ({
+                        ...prev,
+                        brand: name,
+                        brandLogo: logo || ''
+                      }));
+                    }}
                   />
                 </div>
                 <div>
@@ -1011,6 +1091,19 @@ export default function ItemsView() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Product Description (Highlights, Details, Ingredients, Usage)
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Enter product description, highlights, ingredients, health benefits, or storage instructions..."
+                  value={editFormData.description}
+                  onChange={e => setEditFormData({ ...editFormData, description: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500 resize-y placeholder:text-slate-400 leading-relaxed"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1094,11 +1187,18 @@ export default function ItemsView() {
                 </div>
               </div>
 
-              <ImageUploadInput
-                label="Product Image"
-                value={editFormData.image}
-                onChange={(imageUrl) => setEditFormData(prev => ({ ...prev, image: imageUrl }))}
+              <MultiImageUploadInput
+                label="Product Images (Upload Multiple or Add Links)"
+                images={editFormData.images || (editFormData.image ? [editFormData.image] : [])}
+                onChange={(newImages) => {
+                  setEditFormData(prev => ({
+                    ...prev,
+                    images: newImages,
+                    image: newImages.length > 0 ? newImages[0] : ''
+                  }));
+                }}
                 folder="products"
+                maxImages={10}
               />
 
               <div className="grid grid-cols-3 gap-3">

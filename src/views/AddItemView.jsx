@@ -2,18 +2,22 @@ import React, { useState } from 'react';
 import { PlusCircle, Package, ArrowLeft, Image as ImageIcon, Check, FolderPlus, X, FileSpreadsheet } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import Header from '../components/Header';
-import ImageUploadInput from '../components/ImageUploadInput';
+import MultiImageUploadInput from '../components/MultiImageUploadInput';
+import BrandSelector from '../components/BrandSelector';
 import ExcelProductImporter from '../components/ExcelProductImporter';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function AddItemView() {
-  const { categories, categoryDocs, addCategory, addItem, globalSettings } = useAdmin();
+  const { categories, categoryDocs, addCategory, addItem, items, globalSettings, brands = [] } = useAdmin();
   const navigate = useNavigate();
 
   const [creationMode, setCreationMode] = useState('single'); // 'single' | 'excel'
 
   const [formData, setFormData] = useState({
     name: '',
+    description: '',
+    brand: '',
+    brandLogo: '',
     category: '',
     subcategory: '',
     price: '',
@@ -23,10 +27,28 @@ export default function AddItemView() {
     isTrending: false,
     isBogo: false,
     image: '',
+    images: [],
     unit: '',
     maxQuantity: '',
     tags: []
   });
+
+  // Collect unique brands from existing catalog + popular grocery brands
+  const brandOptions = React.useMemo(() => {
+    const popularBrands = [
+      'Amul', 'Aashirvaad', 'Tata', 'Fortune', 'Nestle', 'Britannia',
+      'Dabur', 'Haldiram\'s', 'Parle', 'Saffola', 'Dettol', 'Surf Excel',
+      'Colgate', 'Cadbury', 'Patanjali', 'Everest', 'MDH', 'Catch', 'Mother Dairy',
+      'Kissan', 'Maggi', 'Kellogg\'s', 'Lipton', 'Red Label', 'Brooke Bond'
+    ];
+    const set = new Set(popularBrands);
+    (items || []).forEach(i => {
+      if (i.brand && typeof i.brand === 'string' && i.brand.trim()) {
+        set.add(i.brand.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [items]);
 
   // Calculate off percentage live
   const offPercentage = (() => {
@@ -66,8 +88,21 @@ export default function AddItemView() {
 
     try {
       setIsSubmitting(true);
+      const primaryImage = (formData.images && formData.images.length > 0)
+        ? formData.images[0]
+        : (formData.image || '');
+      const allImages = (formData.images && formData.images.length > 0)
+        ? formData.images
+        : (primaryImage ? [primaryImage] : []);
+
+      const matchedBrand = brands.find(b => b.name?.toLowerCase().trim() === formData.brand?.toLowerCase().trim());
+      const finalBrandLogo = formData.brandLogo || matchedBrand?.logo || '';
+
       await addItem({
         ...formData,
+        brandLogo: finalBrandLogo,
+        image: primaryImage,
+        images: allImages,
         category: formData.category.trim() || 'General'
       });
       setSuccessMsg(true);
@@ -113,22 +148,20 @@ export default function AddItemView() {
           <button
             type="button"
             onClick={() => setCreationMode('single')}
-            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              creationMode === 'single'
+            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${creationMode === 'single'
                 ? 'bg-emerald-600 text-white shadow-sm'
                 : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
-            }`}
+              }`}
           >
             <PlusCircle className="w-4 h-4" /> Add Single Product
           </button>
           <button
             type="button"
             onClick={() => setCreationMode('excel')}
-            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              creationMode === 'excel'
+            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${creationMode === 'excel'
                 ? 'bg-emerald-600 text-white shadow-sm'
                 : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
-            }`}
+              }`}
           >
             <FileSpreadsheet className="w-4 h-4" /> Bulk Excel Import & Batch Edit Log
           </button>
@@ -139,8 +172,8 @@ export default function AddItemView() {
         </div>
 
         <div className={`${creationMode === 'single' ? 'block' : 'hidden'} bg-white p-8 rounded-2xl border border-slate-200 shadow-sm`}>
-            <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Product Name */}
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-2">Grocery Product Name *</label>
@@ -154,6 +187,22 @@ export default function AddItemView() {
                 />
               </div>
 
+              {/* Brand Selector with Master Logo Library */}
+              <div>
+                <BrandSelector
+                  label="Brand (Company / Manufacturer)"
+                  value={formData.brand}
+                  logo={formData.brandLogo}
+                  onChange={({ name, logo }) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      brand: name,
+                      brandLogo: logo || ''
+                    }));
+                  }}
+                />
+              </div>
+
               {/* Unit/Quantity */}
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-2">Unit / Quantity (e.g., 1 ltr, 500g)</label>
@@ -163,6 +212,20 @@ export default function AddItemView() {
                   value={formData.unit}
                   onChange={e => setFormData({ ...formData, unit: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Product Description */}
+              <div className="md:col-span-3">
+                <label className="text-xs font-bold text-slate-700 block mb-2">
+                  Product Description (Highlights, Details, Ingredients, Usage)
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Enter product description, highlights, ingredients, health benefits, or storage instructions..."
+                  value={formData.description}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none resize-y placeholder:text-slate-400 leading-relaxed"
                 />
               </div>
 
@@ -326,17 +389,16 @@ export default function AddItemView() {
                           type="button"
                           onClick={() => {
                             setFormData(prev => {
-                              const newTags = isSelected 
+                              const newTags = isSelected
                                 ? prev.tags.filter(t => t !== tag)
                                 : [...prev.tags, tag];
                               return { ...prev, tags: newTags };
                             });
                           }}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                            isSelected 
-                              ? 'bg-fuchsia-600 text-white border-fuchsia-600 shadow-sm' 
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${isSelected
+                              ? 'bg-fuchsia-600 text-white border-fuchsia-600 shadow-sm'
                               : 'bg-white text-slate-600 border-slate-200 hover:border-fuchsia-300'
-                          }`}
+                            }`}
                         >
                           {tag}
                         </button>
@@ -346,18 +408,25 @@ export default function AddItemView() {
                 </div>
               )}
 
-            {/* Product Image Input (Firebase Storage Upload & URL Link) */}
-            <div className="md:col-span-2">
-              <ImageUploadInput
-                label="Product Image"
-                value={formData.image}
-                onChange={(imageUrl) => setFormData(prev => ({ ...prev, image: imageUrl }))}
-                folder="products"
-              />
+              {/* Product Multi-Image Upload & URL Links */}
+              <div className="md:col-span-2">
+                <MultiImageUploadInput
+                  label="Product Images (Upload Multiple or Add Links)"
+                  images={formData.images.length > 0 ? formData.images : (formData.image ? [formData.image] : [])}
+                  onChange={(newImages) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      images: newImages,
+                      image: newImages.length > 0 ? newImages[0] : ''
+                    }));
+                  }}
+                  folder="products"
+                  maxImages={10}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Submit Button */}
+            {/* Submit Button */}
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
               <button
                 type="button"

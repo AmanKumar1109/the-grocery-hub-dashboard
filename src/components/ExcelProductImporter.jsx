@@ -52,9 +52,11 @@ export default function ExcelProductImporter() {
     const sampleData = [
       {
         "Product Name": "Fresh Organic Tomatoes",
+        "Brand": "",
         "Unit": "1 kg",
         "Category": "Fresh Vegetables",
         "Subcategory": "Organic",
+        "Description": "Farm fresh red organic tomatoes, rich in lycopene and vitamin C.",
         "MRP": 60,
         "Our Price": 45,
         "Image URL": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&auto=format&fit=crop&q=80",
@@ -62,9 +64,11 @@ export default function ExcelProductImporter() {
       },
       {
         "Product Name": "Amul Taaza Toned Milk",
+        "Brand": "Amul",
         "Unit": "1 L",
         "Category": "Dairy & Eggs",
         "Subcategory": "Milk",
+        "Description": "Fresh pasteurized toned milk from Amul with 3% fat content.",
         "MRP": 54,
         "Our Price": 52,
         "Image URL": "",
@@ -72,8 +76,10 @@ export default function ExcelProductImporter() {
       },
       {
         "Product Name": "Fortune Sunflower Oil (1L)",
+        "Brand": "Fortune",
         "Category": "Oils & Ghee",
         "Subcategory": "Cooking Oil",
+        "Description": "Refined sunflower cooking oil for daily healthy cooking.",
         "MRP": 160,
         "Our Price": 140,
         "Image URL": "",
@@ -124,6 +130,8 @@ export default function ExcelProductImporter() {
           };
 
           const name = findVal(['product name', 'name', 'product', 'item name', 'item', 'title', 'product_name']);
+          const brand = findVal(['brand', 'company', 'brand name', 'manufacturer']);
+          const description = findVal(['description', 'desc', 'details', 'about', 'product description']);
           const category = findVal(['category', 'categories', 'cat', 'department', 'type', 'categore', 'caregere', 'product category']);
           const subcategory = findVal(['subcategory', 'sub category', 'sub-category', 'subcat']);
           const sellingPrice = findVal(['mrp', 'mrp (₹)', 'mrp (rs)', 'selling price', 'original price', 'retail price', 'retail_price']);
@@ -137,6 +145,8 @@ export default function ExcelProductImporter() {
           return {
             id: `batch-${Date.now()}-${idx}`,
             name: String(name || '').trim(),
+            brand: String(brand || '').trim(),
+            description: String(description || '').trim(),
             category: String(category || '').trim() || 'General',
             subcategory: String(subcategory || '').trim(),
             sellingPrice: sellingPrice !== '' ? String(sellingPrice) : '',
@@ -235,11 +245,14 @@ export default function ExcelProductImporter() {
 
         await addItem({
           name: item.name.trim(),
+          brand: item.brand || '',
+          description: item.description || '',
           category: finalCategory,
           subcategory: finalSubcategory,
           sellingPrice: item.sellingPrice || item.price || '0',
           price: item.price || item.sellingPrice || '0',
           image: finalImage,
+          images: finalImage ? [finalImage] : [],
           unit: item.unit || '',
           inStock: item.inStock !== false,
           isTrending: false,

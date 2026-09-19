@@ -49,6 +49,7 @@ export const AdminProvider = ({ children }) => {
   const [users, setUsers] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [coupons, setCoupons] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [globalSettings, setGlobalSettings] = useState({});
 
@@ -150,6 +151,24 @@ export const AdminProvider = ({ children }) => {
           setCoupons(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
         });
 
+        // Brands snapshot - listens to settings/brands (100% permitted by Firestore rules)
+        const unsubBrands = onSnapshot(doc(db, 'settings', 'brands'), (snap) => {
+          if (snap.exists() && Array.isArray(snap.data().list)) {
+            setBrands(snap.data().list);
+          } else {
+            // Check if collection('brands') has legacy docs
+            getDocs(collection(db, 'brands')).then(collSnap => {
+              if (!collSnap.empty) {
+                const list = collSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setBrands(list);
+                setDoc(doc(db, 'settings', 'brands'), { list }, { merge: true }).catch(() => {});
+              }
+            }).catch(() => {});
+          }
+        }, (err) => {
+          console.warn("Brands listener notice:", err);
+        });
+
         // Orders snapshot with audio ping for new incoming orders
         let isFirstOrdersLoad = true;
         const unsubOrders = onSnapshot(collection(db, 'orders'), (snap) => {
@@ -216,6 +235,7 @@ export const AdminProvider = ({ children }) => {
           unsubUsers();
           unsubLogs();
           unsubCoupons();
+          unsubBrands();
           unsubSettings();
         };
       } catch (err) {
@@ -947,6 +967,101 @@ export const AdminProvider = ({ children }) => {
     }
   };
 
+  // Brand Master Management (Upload once, reuse across all products)
+  const saveBrand = async (brandName, logoUrl = '') => {
+    const trimmed = brandName?.trim();
+    if (!trimmed) return false;
+    try {
+      const brandDocRef = doc(db, 'settings', 'brands');
+      const snap = await getDoc(brandDocRef);
+      let currentList = [];
+      if (snap.exists() && Array.isArray(snap.data().list)) {
+        currentList = snap.data().list;
+      } else {
+        currentList = [...brands];
+      }
+
+      const existingIndex = currentList.findIndex(
+        b => b.name?.toLowerCase().trim() === trimmed.toLowerCase() || b.id?.toLowerCase().trim() === trimmed.toLowerCase()
+      );
+
+      const brandItem = {
+        id: trimmed,
+        name: trimmed,
+        logo: logoUrl || '',
+        updatedAt: new Date().toISOString()
+      };
+
+      if (existingIndex >= 0) {
+        currentList[existingIndex] = { ...currentList[existingIndex], ...brandItem };
+      } else {
+        currentList.push(brandItem);
+      }
+
+      // Save to settings/brands (100% permitted by firestore rules)
+      await setDoc(brandDocRef, { list: currentList }, { merge: true });
+
+      // Immediate state update
+      setBrands([...currentList]);
+
+      // Also try saving to brands collection as backup
+      try {
+        await setDoc(doc(db, 'brands', trimmed), brandItem, { merge: true });
+      } catch (collErr) {
+        // Safe to ignore if collection rules aren't deployed
+      }
+
+      // Automatically sync logo to all existing items with this brand in items collection
+      if (logoUrl) {
+        const itemsWithBrand = items.filter(
+          i => (i.brand || '').trim().toLowerCase() === trimmed.toLowerCase()
+        );
+        if (itemsWithBrand.length > 0) {
+          const batch = writeBatch(db);
+          itemsWithBrand.forEach(item => {
+            batch.update(doc(db, 'items', item.id), { brandLogo: logoUrl });
+          });
+          await batch.commit();
+        }
+      }
+
+      await addAuditLog('BRAND_SAVED', `Saved brand "${trimmed}" in Master Brands Library`, 'Catalog', 'success');
+      return true;
+    } catch (e) {
+      console.error("Error saving brand:", e);
+      throw e;
+    }
+  };
+
+  const deleteBrand = async (brandId) => {
+    try {
+      const brandDocRef = doc(db, 'settings', 'brands');
+      const snap = await getDoc(brandDocRef);
+      let currentList = [];
+      if (snap.exists() && Array.isArray(snap.data().list)) {
+        currentList = snap.data().list;
+      } else {
+        currentList = [...brands];
+      }
+
+      const updated = currentList.filter(b => b.id !== brandId && b.name !== brandId);
+      await setDoc(brandDocRef, { list: updated });
+      setBrands(updated);
+
+      try {
+        await deleteDoc(doc(db, 'brands', brandId));
+      } catch (e) {
+        // Safe to ignore
+      }
+
+      await addAuditLog('BRAND_DELETED', `Deleted brand "${brandId}" from Master Brands Library`, 'Catalog', 'danger');
+      return true;
+    } catch (e) {
+      console.error("Error deleting brand:", e);
+      throw e;
+    }
+  };
+
   const deleteAuditLog = async (logId) => {
     try {
       await deleteDoc(doc(db, 'auditLogs', logId));
@@ -1005,6 +1120,9 @@ export const AdminProvider = ({ children }) => {
       addCoupon,
       toggleCouponStatus,
       deleteCoupon,
+      brands,
+      saveBrand,
+      deleteBrand,
       notificationTemplates,
       updateNotificationTemplates,
       globalSettings
