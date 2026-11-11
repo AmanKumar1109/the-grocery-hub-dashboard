@@ -121,7 +121,7 @@ export const AdminProvider = ({ children }) => {
             setCategoryDocs([{ id: 'General', name: 'General', subcategories: [] }]);
           } else {
             const loadedCats = snap.docs.map(d => d.data().name || d.id);
-            const docs = snap.docs.map(d => ({ id: d.id, name: d.data().name || d.id, subcategories: d.data().subcategories || [] }));
+            const docs = snap.docs.map(d => ({ id: d.id, name: d.data().name || d.id, subcategories: d.data().subcategories || [], ...d.data() }));
             const cleanCats = loadedCats.filter(c => !['Burgers', 'Burger', 'Pizza', 'Pizzas', 'Salad', 'Salads', 'Drink', 'Drinks', 'Dessert', 'Desserts', 'Starters', 'Main Course', 'Fast Food'].includes(c));
             
             // Ensure General category is always present in Admin

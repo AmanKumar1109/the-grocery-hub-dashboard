@@ -34,6 +34,9 @@ import DisclaimerView from './views/DisclaimerView';
 import ShippingPolicyView from './views/ShippingPolicyView';
 import ReviewsView from './views/ReviewsView';
 import ReferralsView from './views/ReferralsView';
+import AppBannersView from './views/AppBannersView';
+import AppCategoryCoversView from './views/AppCategoryCoversView';
+import AppHomeLayoutView from './views/AppHomeLayoutView';
 
 // Admin layout — sidebar + content
 function AdminLayout() {
@@ -66,6 +69,9 @@ function AdminLayout() {
             <Route path="shipping-policy" element={<ShippingPolicyView />} />
             <Route path="store-settings" element={<StoreSettingsView />} />
             <Route path="reviews" element={<ReviewsView />} />
+            <Route path="app-banners" element={<AppBannersView />} />
+            <Route path="app-categories" element={<AppCategoryCoversView />} />
+            <Route path="app-home-layout" element={<AppHomeLayoutView />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>

@@ -20,7 +20,10 @@ import {
   Bell,
   Mail,
   Gift,
-  Database
+  Database,
+  Smartphone,
+  Layers,
+  LayoutTemplate
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import { useAuth } from '../context/AuthContext';
@@ -66,6 +69,32 @@ export default function Sidebar() {
           name: 'Add New Product',
           path: '/dashboard/items/add',
           icon: PlusCircle
+        }
+      ]
+    },
+    {
+      title: 'MOBILE APP (GROCERYHUB)',
+      items: [
+        {
+          name: 'App Banners (Top Carousel)',
+          path: '/dashboard/app-banners',
+          icon: Smartphone,
+          badge: 'Dynamic',
+          badgeColor: 'bg-emerald-100 text-emerald-800 font-bold'
+        },
+        {
+          name: 'Category Quick Tiles & Covers',
+          path: '/dashboard/app-categories',
+          icon: Layers,
+          badge: 'Tiles',
+          badgeColor: 'bg-amber-100 text-amber-800 font-bold'
+        },
+        {
+          name: 'Home Layout & Sections',
+          path: '/dashboard/app-home-layout',
+          icon: LayoutTemplate,
+          badge: 'Builder',
+          badgeColor: 'bg-purple-100 text-purple-800 font-bold'
         }
       ]
     },
