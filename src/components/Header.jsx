@@ -5,7 +5,7 @@ import { useAdmin } from '../context/AdminContext';
 import { useAuth } from '../context/AuthContext';
 
 export default function Header({ title, subtitle }) {
-  const { auditLogs } = useAdmin();
+  const { auditLogs, globalSettings } = useAdmin();
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -37,10 +37,17 @@ export default function Header({ title, subtitle }) {
         </div>
 
         {/* Live System Indicator */}
-        <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100 text-xs font-semibold">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-          <span>Live Operations</span>
-        </div>
+        {globalSettings?.isAppAcceptingOrders === false ? (
+          <div className="flex items-center gap-2 px-3 py-1 bg-rose-50 text-rose-700 rounded-full border border-rose-200 text-xs font-bold animate-pulse" title="Mobile App ordering is currently paused">
+            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+            <span>App Orders Paused</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100 text-xs font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            <span>Live Operations</span>
+          </div>
+        )}
 
         {/* Action / Notification Icon */}
         <div className="relative">

@@ -45,7 +45,11 @@ import {
   Package,
   Percent,
   Grid,
-  Store
+  Store,
+  PauseCircle,
+  PlayCircle,
+  MessageSquare,
+  AlertTriangle
 } from 'lucide-react';
 
 // Preset color gradients for middle banners
@@ -402,6 +406,14 @@ export default function AppHomeLayoutView() {
   const [saving, setSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
+  // Mobile App Order Acceptance / Pause Control State
+  const [appOrdersActive, setAppOrdersActive] = useState(true);
+  const [appPauseMessage, setAppPauseMessage] = useState(
+    'Online ordering is temporarily paused on our app. You can still browse products & prices!'
+  );
+  const [savingAppOrderStatus, setSavingAppOrderStatus] = useState(false);
+  const [editingPauseNotice, setEditingPauseNotice] = useState(false);
+
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSection, setEditingSection] = useState(null);
@@ -483,6 +495,74 @@ export default function AppHomeLayoutView() {
 
     return () => unsubscribe();
   }, []);
+
+  // Real-time synchronization of Mobile App Orders Acceptance / Pause State
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'global'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const active =
+          data.isAppAcceptingOrders !== undefined
+            ? data.isAppAcceptingOrders !== false
+            : data.isAcceptingOrders !== false;
+        setAppOrdersActive(active);
+        if (data.appOrderPauseMessage) {
+          setAppPauseMessage(data.appOrderPauseMessage);
+        } else if (data.orderPauseMessage) {
+          setAppPauseMessage(data.orderPauseMessage);
+        }
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Instant toggle for App Orders with real-time Firestore sync
+  const handleToggleAppOrders = async () => {
+    setSavingAppOrderStatus(true);
+    const next = !appOrdersActive;
+    try {
+      await setDoc(
+        doc(db, 'settings', 'global'),
+        {
+          isAppAcceptingOrders: next,
+          appOrderPauseMessage: appPauseMessage,
+          appOrderPausedAt: next ? null : serverTimestamp(),
+        },
+        { merge: true }
+      );
+      setAppOrdersActive(next);
+      showToast(
+        next ? '✅ Mobile App Orders are now ACTIVE!' : '⏸️ Mobile App Orders are now PAUSED!',
+        'success'
+      );
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to update app order status', 'error');
+    } finally {
+      setSavingAppOrderStatus(false);
+    }
+  };
+
+  // Save custom pause notice message
+  const handleSavePauseNotice = async () => {
+    setSavingAppOrderStatus(true);
+    try {
+      await setDoc(
+        doc(db, 'settings', 'global'),
+        {
+          appOrderPauseMessage: appPauseMessage,
+        },
+        { merge: true }
+      );
+      setEditingPauseNotice(false);
+      showToast('Pause notice message updated successfully!', 'success');
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to update notice message', 'error');
+    } finally {
+      setSavingAppOrderStatus(false);
+    }
+  };
 
   // Open modal to add a Category Products section
   const handleAddCategorySection = () => {
@@ -865,6 +945,166 @@ export default function AppHomeLayoutView() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 pt-6">
+        {/* Mobile App Order Acceptance & Pause Master Controller */}
+        <div
+          className={`mb-6 rounded-2xl border transition-all duration-200 overflow-hidden shadow-xs ${
+            appOrdersActive
+              ? 'bg-gradient-to-r from-emerald-50/80 via-emerald-50/30 to-white border-emerald-200'
+              : 'bg-gradient-to-r from-rose-50/90 via-rose-50/40 to-white border-rose-300 ring-2 ring-rose-500/20'
+          }`}
+        >
+          <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div
+                className={`p-3 rounded-2xl shrink-0 transition-colors ${
+                  appOrdersActive
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                    : 'bg-rose-600 text-white shadow-md shadow-rose-600/20 animate-pulse'
+                }`}
+              >
+                <Power className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+                    Mobile App Ordering
+                  </h3>
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider ${
+                      appOrdersActive
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : 'bg-rose-100 text-rose-800 border border-rose-300'
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        appOrdersActive ? 'bg-emerald-500' : 'bg-rose-500 animate-ping'
+                      }`}
+                    />
+                    {appOrdersActive ? 'Active & Accepting Orders' : 'Orders Paused'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
+                  {appOrdersActive ? (
+                    <span>
+                      Customers using the Android / iOS mobile app can freely add products to cart and proceed through checkout to place orders.
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-rose-900">
+                      Ordering is paused on the mobile app. A notice banner is displayed, and the checkout button is disabled with your custom message.
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+              <button
+                type="button"
+                onClick={() => setEditingPauseNotice(!editingPauseNotice)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition shadow-2xs cursor-pointer"
+              >
+                <MessageSquare className="w-4 h-4 text-slate-500" />
+                <span>{editingPauseNotice ? 'Hide Notice Editor' : 'Edit Pause Notice'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleToggleAppOrders}
+                disabled={savingAppOrderStatus}
+                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md cursor-pointer active:scale-95 ${
+                  appOrdersActive
+                    ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                }`}
+              >
+                {savingAppOrderStatus ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : appOrdersActive ? (
+                  <PauseCircle className="w-4 h-4" />
+                ) : (
+                  <PlayCircle className="w-4 h-4" />
+                )}
+                <span>
+                  {appOrdersActive ? 'Pause App Orders Now' : 'Resume App Orders (Turn ON)'}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Expandable Pause Notice Message Editor */}
+          {editingPauseNotice && (
+            <div className="border-t border-slate-200/80 bg-white/70 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  <span>Customer Notice Message (Displayed on App when paused)</span>
+                </label>
+                <span className="text-[11px] text-slate-400">
+                  Visible on Home Header, Cart & Checkout
+                </span>
+              </div>
+
+              <textarea
+                rows={2}
+                value={appPauseMessage}
+                onChange={(e) => setAppPauseMessage(e.target.value)}
+                placeholder="Enter the notice message shown to customers on the app..."
+                className="w-full p-2.5 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-slate-800"
+              />
+
+              {/* Quick Presets */}
+              <div className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="text-[11px] font-bold text-slate-500">Quick Presets:</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAppPauseMessage(
+                      'Online ordering is temporarily paused due to heavy order rush. We will resume taking orders in 30 minutes!'
+                    )
+                  }
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                >
+                  ⚡ High Order Rush
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAppPauseMessage(
+                      'Store is closed for the day. We will reopen tomorrow morning at 7:00 AM!'
+                    )
+                  }
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                >
+                  🌙 Store Closed for Day
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAppPauseMessage(
+                      'App ordering is paused for a short maintenance update. You can browse all products freely!'
+                    )
+                  }
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                >
+                  🛠️ Maintenance Update
+                </button>
+                <div className="ml-auto">
+                  <button
+                    type="button"
+                    onClick={handleSavePauseNotice}
+                    disabled={savingAppOrderStatus}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 transition shadow-xs cursor-pointer"
+                  >
+                    {savingAppOrderStatus && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>Save Notice</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Info Card */}
         <div className="bg-gradient-to-r from-purple-500/10 via-amber-500/5 to-transparent border border-purple-500/20 rounded-2xl p-5 mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">

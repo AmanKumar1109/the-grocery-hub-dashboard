@@ -61,10 +61,12 @@ export default function StoreSettingsView() {
   
   const [settings, setSettings] = useState({
     isAcceptingOrders: true,
+    isAppAcceptingOrders: true,
     isScheduledPause: false,
     pauseStartDateTime: '',
     pauseEndDateTime: '',
     orderPauseMessage: 'Online ordering is temporarily paused. You can still browse our products and prices!',
+    appOrderPauseMessage: 'Online ordering is temporarily paused on our app. You can still browse our products and prices!',
     supportPhone: '',
     whatsappNumber: '',
     supportEmail: '',
@@ -670,6 +672,20 @@ export default function StoreSettingsView() {
     }
   };
 
+  // Instantly toggle Mobile App order acceptance
+  const handleInstantToggleAppOrders = async () => {
+    const nextVal = settings.isAppAcceptingOrders === false ? true : false;
+    setSettings(prev => ({ ...prev, isAppAcceptingOrders: nextVal }));
+    try {
+      await setDoc(SETTINGS_DOC_REF, { isAppAcceptingOrders: nextVal }, { merge: true });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Failed to update app order acceptance:', err);
+      setError('Failed to update app order status.');
+    }
+  };
+
   const handleApplyPausePreset = (presetType) => {
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
@@ -896,6 +912,43 @@ export default function StoreSettingsView() {
                 <p className="font-bold">{storeScheduleStatus.badge}</p>
                 <p className="opacity-90 mt-0.5">{storeScheduleStatus.description}</p>
               </div>
+            </div>
+
+            {/* Dedicated Mobile App Ordering Pause Switch */}
+            <div className="p-5 rounded-2xl border border-purple-200 bg-purple-50/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className={`p-2.5 rounded-xl ${settings.isAppAcceptingOrders !== false ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
+                  <Power className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-slate-800">Mobile App Ordering (iOS & Android)</h4>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      settings.isAppAcceptingOrders !== false
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-rose-100 text-rose-800'
+                    }`}>
+                      {settings.isAppAcceptingOrders !== false ? 'App Orders Active' : 'App Orders Paused'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Allow or pause orders specifically on the Mobile App without affecting your main store website.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleInstantToggleAppOrders}
+                className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-xs cursor-pointer active:scale-95 shrink-0 ${
+                  settings.isAppAcceptingOrders === false
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-rose-600 hover:bg-rose-700 text-white'
+                }`}
+              >
+                <Power className="w-4 h-4" />
+                <span>{settings.isAppAcceptingOrders === false ? 'Resume App Orders' : 'Pause App Orders'}</span>
+              </button>
             </div>
 
             {/* Scheduled Pause (Date & Time) */}
