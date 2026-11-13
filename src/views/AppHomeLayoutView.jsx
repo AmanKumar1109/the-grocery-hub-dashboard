@@ -14,6 +14,7 @@ import {
 import { db } from '../firebase';
 import { useAdmin } from '../context/AdminContext';
 import ImageUploadInput from '../components/ImageUploadInput';
+import Header from '../components/Header';
 import {
   Smartphone,
   Plus,
@@ -864,7 +865,7 @@ export default function AppHomeLayoutView() {
   const hiddenCount = sections.filter((s) => s.isActive === false).length;
 
   return (
-    <div className="flex-1 min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/60 pb-16 font-sans">
+    <div className="flex-1 min-h-screen bg-slate-50/50 flex flex-col font-sans">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-200">
@@ -885,106 +886,101 @@ export default function AppHomeLayoutView() {
         </div>
       )}
 
-      {/* Top Banner / Breadcrumb */}
-      <div className="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-600 shadow-xs">
-              <LayoutTemplate className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
-                  Mobile App Builder
-                </span>
-                <span className="text-xs text-slate-400">•</span>
-                <span className="text-xs text-slate-500 font-medium">Home Page Dynamic Layout</span>
-              </div>
-              <h1 className="text-xl font-bold text-slate-900 mt-0.5">
-                Home Screen Layout & Sections
-              </h1>
-            </div>
+      {/* Unified Standard Header */}
+      <Header
+        title="Home Screen Layout"
+        subtitle="Arrange dynamic mobile sections, ordering controls, promotional shelves, and product displays"
+      />
+
+      <main className="p-8 space-y-6 flex-1 max-w-7xl w-full mx-auto">
+        {/* Actions Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+          <div>
+            <span className="text-xs font-bold text-slate-800">
+              {sections.length} Mobile Home Sections Configured
+            </span>
+            <p className="text-[11px] text-slate-500">
+              Sections render in real-time in the mobile app in the exact top-to-bottom sequence below
+            </p>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
             <button
               onClick={handleResetDefaults}
               disabled={saving}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer disabled:opacity-50"
               title="Reset to default 8 sections"
             >
-              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+              <RefreshCw className="w-3.5 h-3.5 text-slate-600" />
               <span>Reset Defaults</span>
             </button>
 
             <button
               onClick={handleAddCategorySection}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 transition shadow-sm hover:shadow shadow-purple-600/20 cursor-pointer"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5 text-slate-600" />
               <span>Add Category Shelf</span>
             </button>
 
             <button
               onClick={handleAddPromoBanner}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 transition shadow-sm hover:shadow shadow-amber-600/20 cursor-pointer"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5 text-slate-600" />
               <span>Add Middle Banner</span>
             </button>
 
             <button
               onClick={handleAddGrandDealsShowcase}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-700 hover:bg-rose-800 transition shadow-sm hover:shadow shadow-rose-700/20 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-black transition shadow-sm cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>Add Deals Grid Showcase</span>
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Add Deals Showcase</span>
             </button>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-6 pt-6">
         {/* Mobile App Order Acceptance & Pause Master Controller */}
         <div
-          className={`mb-6 rounded-2xl border transition-all duration-200 overflow-hidden shadow-xs ${
+          className={`rounded-2xl border transition-all duration-200 overflow-hidden shadow-2xs ${
             appOrdersActive
-              ? 'bg-gradient-to-r from-emerald-50/80 via-emerald-50/30 to-white border-emerald-200'
-              : 'bg-gradient-to-r from-rose-50/90 via-rose-50/40 to-white border-rose-300 ring-2 ring-rose-500/20'
+              ? 'bg-white border-slate-200'
+              : 'bg-rose-50/40 border-rose-200'
           }`}
         >
           <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
               <div
-                className={`p-3 rounded-2xl shrink-0 transition-colors ${
+                className={`p-2.5 rounded-xl shrink-0 ${
                   appOrdersActive
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                    : 'bg-rose-600 text-white shadow-md shadow-rose-600/20 animate-pulse'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-rose-100 text-rose-700 border border-rose-200'
                 }`}
               >
                 <Power className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2.5">
-                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+                  <h3 className="text-sm font-bold text-slate-900">
                     Mobile App Ordering
                   </h3>
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider ${
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                       appOrdersActive
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        : 'bg-rose-100 text-rose-800 border border-rose-300'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-rose-100 text-rose-800 border border-rose-200'
                     }`}
                   >
                     <span
-                      className={`w-2 h-2 rounded-full ${
-                        appOrdersActive ? 'bg-emerald-500' : 'bg-rose-500 animate-ping'
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        appOrdersActive ? 'bg-emerald-600' : 'bg-rose-600'
                       }`}
                     />
                     {appOrdersActive ? 'Active & Accepting Orders' : 'Orders Paused'}
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
+                <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
                   {appOrdersActive ? (
                     <span>
                       Customers using the Android / iOS mobile app can freely add products to cart and proceed through checkout to place orders.
@@ -1002,9 +998,9 @@ export default function AppHomeLayoutView() {
               <button
                 type="button"
                 onClick={() => setEditingPauseNotice(!editingPauseNotice)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition shadow-2xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
               >
-                <MessageSquare className="w-4 h-4 text-slate-500" />
+                <MessageSquare className="w-3.5 h-3.5 text-slate-600" />
                 <span>{editingPauseNotice ? 'Hide Notice Editor' : 'Edit Pause Notice'}</span>
               </button>
 
@@ -1012,21 +1008,21 @@ export default function AppHomeLayoutView() {
                 type="button"
                 onClick={handleToggleAppOrders}
                 disabled={savingAppOrderStatus}
-                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md cursor-pointer active:scale-95 ${
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer ${
                   appOrdersActive
-                    ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20'
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                    ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                 }`}
               >
                 {savingAppOrderStatus ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : appOrdersActive ? (
-                  <PauseCircle className="w-4 h-4" />
+                  <PauseCircle className="w-3.5 h-3.5" />
                 ) : (
-                  <PlayCircle className="w-4 h-4" />
+                  <PlayCircle className="w-3.5 h-3.5" />
                 )}
                 <span>
-                  {appOrdersActive ? 'Pause App Orders Now' : 'Resume App Orders (Turn ON)'}
+                  {appOrdersActive ? 'Pause App Orders' : 'Resume App Orders'}
                 </span>
               </button>
             </div>
@@ -1034,10 +1030,10 @@ export default function AppHomeLayoutView() {
 
           {/* Expandable Pause Notice Message Editor */}
           {editingPauseNotice && (
-            <div className="border-t border-slate-200/80 bg-white/70 p-4 space-y-3">
+            <div className="border-t border-slate-200/80 bg-slate-50/60 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                   <span>Customer Notice Message (Displayed on App when paused)</span>
                 </label>
                 <span className="text-[11px] text-slate-400">
@@ -1050,12 +1046,12 @@ export default function AppHomeLayoutView() {
                 value={appPauseMessage}
                 onChange={(e) => setAppPauseMessage(e.target.value)}
                 placeholder="Enter the notice message shown to customers on the app..."
-                className="w-full p-2.5 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-slate-800"
+                className="w-full p-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-800"
               />
 
               {/* Quick Presets */}
               <div className="flex items-center gap-2 flex-wrap text-xs">
-                <span className="text-[11px] font-bold text-slate-500">Quick Presets:</span>
+                <span className="text-[11px] font-bold text-slate-500">Presets:</span>
                 <button
                   type="button"
                   onClick={() =>
@@ -1063,7 +1059,7 @@ export default function AppHomeLayoutView() {
                       'Online ordering is temporarily paused due to heavy order rush. We will resume taking orders in 30 minutes!'
                     )
                   }
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-200/70 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
                 >
                   ⚡ High Order Rush
                 </button>
@@ -1074,7 +1070,7 @@ export default function AppHomeLayoutView() {
                       'Store is closed for the day. We will reopen tomorrow morning at 7:00 AM!'
                     )
                   }
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-200/70 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
                 >
                   🌙 Store Closed for Day
                 </button>
@@ -1085,7 +1081,7 @@ export default function AppHomeLayoutView() {
                       'App ordering is paused for a short maintenance update. You can browse all products freely!'
                     )
                   }
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-200/70 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
                 >
                   🛠️ Maintenance Update
                 </button>
@@ -1094,7 +1090,7 @@ export default function AppHomeLayoutView() {
                     type="button"
                     onClick={handleSavePauseNotice}
                     disabled={savingAppOrderStatus}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 transition shadow-xs cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-slate-900 hover:bg-black transition shadow-2xs cursor-pointer"
                   >
                     {savingAppOrderStatus && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     <span>Save Notice</span>
@@ -1105,38 +1101,42 @@ export default function AppHomeLayoutView() {
           )}
         </div>
 
-        {/* Info Card */}
-        <div className="bg-gradient-to-r from-purple-500/10 via-amber-500/5 to-transparent border border-purple-500/20 rounded-2xl p-5 mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-purple-600 text-white shadow-xs">
-              <Sliders className="w-5 h-5" />
+        {/* Metric Summary Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Sections</span>
+              <Sliders className="w-4 h-4 text-slate-400" />
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                Visual Home Screen Arrangement
-              </h3>
-              <p className="text-xs text-slate-600 mt-0.5 max-w-2xl leading-relaxed">
-                Control exactly what customers see on the GroceryHub mobile home screen from top to bottom.
-                Pick items from your <span className="font-bold text-slate-800">{items.length} store products</span> directly without re-uploading images, customize the luxury <span className="font-bold text-rose-800">"THE Grocery DEALS"</span> 2x2 grid showcase, or insert middle promo banner cards anywhere!
-              </p>
-            </div>
+            <div className="text-2xl font-black text-slate-900 mt-2">{sections.length}</div>
+            <p className="text-[11px] text-slate-500 mt-0.5">Configured layout blocks</p>
           </div>
 
-          <div className="flex items-center gap-3 bg-white/80 backdrop-blur-xs px-4 py-2.5 rounded-xl border border-slate-200/80 shadow-xs">
-            <div className="text-center px-2">
-              <div className="text-lg font-extrabold text-emerald-600">{activeCount}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Active in App</div>
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Active in App</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="w-px h-7 bg-slate-200" />
-            <div className="text-center px-2">
-              <div className="text-lg font-extrabold text-slate-400">{hiddenCount}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Hidden</div>
+            <div className="text-2xl font-black text-emerald-600 mt-2">{activeCount}</div>
+            <p className="text-[11px] text-slate-500 mt-0.5">Live on customer phones</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Hidden / Paused</span>
+              <EyeOff className="w-4 h-4 text-slate-400" />
             </div>
-            <div className="w-px h-7 bg-slate-200" />
-            <div className="text-center px-2">
-              <div className="text-lg font-extrabold text-purple-700">{sections.length}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Sections</div>
+            <div className="text-2xl font-black text-slate-500 mt-2">{hiddenCount}</div>
+            <p className="text-[11px] text-slate-500 mt-0.5">Temporarily omitted</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Store Catalog</span>
+              <Package className="w-4 h-4 text-slate-500" />
             </div>
+            <div className="text-2xl font-black text-slate-900 mt-2">{items.length}</div>
+            <p className="text-[11px] text-slate-500 mt-0.5">Available products</p>
           </div>
         </div>
 
@@ -1223,25 +1223,13 @@ export default function AppHomeLayoutView() {
 
                       {/* Section Type Icon & Info */}
                       <div className="flex items-center gap-3.5 min-w-0">
-                        <div
-                          className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xs ${
-                            isTopCarousel
-                              ? 'bg-blue-50 text-blue-600 border border-blue-200'
-                              : isPromoBanner
-                              ? 'bg-amber-50 text-amber-600 border border-amber-200'
-                              : isCategoryProducts
-                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                              : isGrandDeals
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                              : 'bg-rose-50 text-rose-600 border border-rose-200'
-                          }`}
-                        >
-                          {isTopCarousel && <Smartphone className="w-6 h-6" />}
-                          {isPromoBanner && <ImageIcon className="w-6 h-6" />}
-                          {isCategoryProducts && <ShoppingBag className="w-6 h-6" />}
-                          {isGrandDeals && <Sparkles className="w-6 h-6" />}
-                          {isSpecialDeals && <Flame className="w-6 h-6" />}
-                          {isTrendingArea && <Flame className="w-6 h-6" />}
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-slate-100 text-slate-700 border border-slate-200">
+                          {isTopCarousel && <Smartphone className="w-5 h-5" />}
+                          {isPromoBanner && <ImageIcon className="w-5 h-5" />}
+                          {isCategoryProducts && <ShoppingBag className="w-5 h-5" />}
+                          {isGrandDeals && <Sparkles className="w-5 h-5" />}
+                          {isSpecialDeals && <Flame className="w-5 h-5" />}
+                          {isTrendingArea && <Flame className="w-5 h-5" />}
                         </div>
 
                         <div className="min-w-0">
@@ -1250,33 +1238,21 @@ export default function AppHomeLayoutView() {
                               {sec.title}
                             </h4>
 
-                            {/* Type Pill */}
-                            <span
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${
-                                isPromoBanner
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : isCategoryProducts
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : isGrandDeals
-                                  ? 'bg-rose-100 text-rose-900 font-black'
-                                  : isTopCarousel
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-slate-100 text-slate-700'
-                              }`}
-                            >
+                            {/* Clean Type Pill */}
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200">
                               {isPromoBanner
-                                ? 'Middle Banner Card'
+                                ? 'Middle Banner'
                                 : isCategoryProducts
                                 ? 'Category Shelf'
                                 : isGrandDeals
-                                ? 'Curated Deals Grid'
+                                ? 'Curated Showcase'
                                 : isTopCarousel
                                 ? 'Top Carousel'
                                 : 'Curated Section'}
                             </span>
 
                             {sec.badge && (
-                              <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[9px] font-black tracking-wider uppercase">
+                              <span className="px-1.5 py-0.5 rounded bg-slate-900 text-white text-[9px] font-bold uppercase tracking-wider">
                                 {sec.badge}
                               </span>
                             )}
@@ -1295,13 +1271,13 @@ export default function AppHomeLayoutView() {
                       <button
                         onClick={(e) => handleToggleActive(sec, e)}
                         title={isActive ? 'Click to Hide from App' : 'Click to Show in App'}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                           isActive
                             ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
                             : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'
                         }`}
                       >
-                        <Power className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-600' : 'bg-slate-400'}`} />
                         <span>{isActive ? 'Active' : 'Hidden'}</span>
                       </button>
 
@@ -1309,9 +1285,9 @@ export default function AppHomeLayoutView() {
                       <button
                         onClick={() => handleEditSection(sec)}
                         title="Edit Section Details"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-purple-700 hover:bg-purple-50 transition border border-slate-200 hover:border-purple-200 cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition border border-slate-200 cursor-pointer"
                       >
-                        <Edit3 className="w-4 h-4" />
+                        <Edit3 className="w-3.5 h-3.5 text-slate-500" />
                         <span>{isGrandDeals ? 'Edit Showcase & Items' : 'Edit'}</span>
                       </button>
 
@@ -1322,7 +1298,7 @@ export default function AppHomeLayoutView() {
                           title="Delete Section"
                           className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition border border-slate-200 hover:border-rose-200 cursor-pointer"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
@@ -1439,7 +1415,7 @@ export default function AppHomeLayoutView() {
             })}
           </div>
         )}
-      </div>
+      </main>
 
       {/* Add / Edit Modal */}
       {modalOpen && (
