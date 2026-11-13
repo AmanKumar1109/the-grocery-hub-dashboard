@@ -95,6 +95,13 @@ export default function Sidebar() {
           icon: LayoutTemplate,
           badge: 'Builder',
           badgeColor: 'bg-purple-100 text-purple-800 font-bold'
+        },
+        {
+          name: 'Push Notifications (FCM)',
+          path: '/dashboard/app-notifications',
+          icon: Bell,
+          badge: 'Broadcast',
+          badgeColor: 'bg-rose-100 text-rose-800 font-bold'
         }
       ]
     },

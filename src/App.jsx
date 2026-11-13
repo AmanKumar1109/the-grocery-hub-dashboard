@@ -37,6 +37,7 @@ import ReferralsView from './views/ReferralsView';
 import AppBannersView from './views/AppBannersView';
 import AppCategoryCoversView from './views/AppCategoryCoversView';
 import AppHomeLayoutView from './views/AppHomeLayoutView';
+import AppPushNotificationsView from './views/AppPushNotificationsView';
 
 // Admin layout — sidebar + content
 function AdminLayout() {
@@ -72,6 +73,7 @@ function AdminLayout() {
             <Route path="app-banners" element={<AppBannersView />} />
             <Route path="app-categories" element={<AppCategoryCoversView />} />
             <Route path="app-home-layout" element={<AppHomeLayoutView />} />
+            <Route path="app-notifications" element={<AppPushNotificationsView />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>
