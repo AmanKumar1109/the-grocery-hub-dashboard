@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAdmin } from '../context/AdminContext';
+import Header from '../components/Header';
 import ImageUploadInput from '../components/ImageUploadInput';
 import {
   Smartphone,
@@ -488,348 +489,302 @@ export default function AppBannersView() {
   });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2.5 bg-amber-500/10 text-amber-600 rounded-xl">
-              <Smartphone className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Mobile App Banners</h1>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Dynamic Top Promotional Carousel • Real-time Hide / Unhide & Reorder
-              </p>
+    <div className="flex-1 min-h-screen bg-slate-50/50 flex flex-col">
+      <Header
+        title="Mobile App Banners"
+        subtitle="Manage dynamic promotional carousel banners, slide ordering, and app visibility"
+      />
+
+      <main className="p-8 space-y-6 flex-1 max-w-7xl w-full mx-auto">
+        {/* Feedback Toast */}
+        {feedback && (
+          <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-200">
+            <div
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-xs font-semibold ${
+                feedback.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : 'bg-rose-50 text-rose-800 border-rose-200'
+              }`}
+            >
+              {feedback.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              )}
+              <span>{feedback.message}</span>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {banners.length > 0 && (
-            <>
-              <button
-                onClick={() => handleBulkToggle(true)}
-                disabled={actionLoading}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
-                title="Show all banners in app"
-              >
-                <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                Show All
-              </button>
-              <button
-                onClick={() => handleBulkToggle(false)}
-                disabled={actionLoading}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
-                title="Hide all banners from app"
-              >
-                <EyeOff className="w-3.5 h-3.5 text-slate-500" />
-                Hide All
-              </button>
-            </>
-          )}
-
-          <button
-            onClick={() => openModal()}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            Add New App Banner
-          </button>
-        </div>
-      </div>
-
-      {/* Feedback Toast */}
-      {feedback && (
-        <div
-          className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold transition ${
-            feedback.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-red-50 border-red-200 text-red-800'
-          }`}
-        >
-          {feedback.type === 'success' ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
-          )}
-          <span>{feedback.message}</span>
-        </div>
-      )}
-
-      {/* Instructions & Summary Banner */}
-      <div className="bg-gradient-to-r from-emerald-50 via-amber-50 to-orange-50 border border-emerald-200/70 rounded-2xl p-4 flex items-start gap-3">
-        <Sparkles className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-        <div className="text-xs text-slate-700 leading-relaxed">
-          <span className="font-bold text-slate-900">Default App Banners Loaded: </span>
-          App ke saare 5 default banners yahan list hain. Aap kisi bhi banner ke saamne diye gaye{' '}
-          <strong className="text-emerald-700">"Hide / Unhide"</strong> button par click karke usko mobile app se
-          turant hide kar sakte hain ya wapas active kar sakte hain.
-        </div>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl">
-          <button
-            onClick={() => setFilterTab('all')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
-              filterTab === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            All Banners ({banners.length})
-          </button>
-          <button
-            onClick={() => setFilterTab('active')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-              filterTab === 'active' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-600 hover:text-emerald-700'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            Active ({activeCount})
-          </button>
-          <button
-            onClick={() => setFilterTab('hidden')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-              filterTab === 'hidden' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-slate-400" />
-            Hidden / Paused ({hiddenCount})
-          </button>
-        </div>
-
-        <div className="text-xs font-bold text-slate-500">
-          Showing {displayBanners.length} of {banners.length} banners
-        </div>
-      </div>
-
-      {/* Banners List */}
-      <div className="space-y-4">
-        {displayBanners.length === 0 ? (
-          <div className="p-12 text-center bg-white rounded-2xl border border-dashed border-slate-300">
-            <p className="text-sm font-bold text-slate-600">No banners found in "{filterTab}" filter.</p>
+        {/* Action & Filter Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
             <button
               onClick={() => setFilterTab('all')}
-              className="mt-3 px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-xs font-bold rounded-lg text-slate-800"
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                filterTab === 'all'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
             >
-              View All Banners
+              All Banners ({banners.length})
+            </button>
+            <button
+              onClick={() => setFilterTab('active')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                filterTab === 'active'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Active ({activeCount})
+            </button>
+            <button
+              onClick={() => setFilterTab('hidden')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                filterTab === 'hidden'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+              Hidden ({hiddenCount})
             </button>
           </div>
-        ) : (
-          displayBanners.map((banner, index) => {
-            const isHidden = banner.isActive === false;
-            const bgGradient =
-              banner.gradientColors && banner.gradientColors.length >= 3
-                ? `linear-gradient(135deg, ${banner.gradientColors[0]} 0%, ${banner.gradientColors[1]} 50%, ${banner.gradientColors[2]} 100%)`
-                : 'linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 50%, #0F172A 100%)';
 
-            const accent = banner.accentColor || '#3B82F6';
-
-            return (
-              <div
-                key={banner.id}
-                className={`bg-white rounded-2xl border p-4 shadow-sm flex flex-col md:flex-row items-center gap-5 transition ${
-                  isHidden
-                    ? 'border-dashed border-slate-300 bg-slate-50/80'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                {/* Order & Reorder Controls */}
-                <div className="flex md:flex-col items-center gap-1 self-start md:self-center">
-                  <button
-                    onClick={() => handleMoveOrder(index, 'up')}
-                    disabled={index === 0 || actionLoading}
-                    title="Move Up"
-                    className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent"
-                  >
-                    <ArrowUp className="w-4 h-4" />
-                  </button>
-                  <span className="text-xs font-black text-slate-600 px-1">#{index + 1}</span>
-                  <button
-                    onClick={() => handleMoveOrder(index, 'down')}
-                    disabled={index === banners.length - 1 || actionLoading}
-                    title="Move Down"
-                    className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent"
-                  >
-                    <ArrowDown className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Realistic Mobile Carousel Preview with Overlay if Hidden */}
-                <div
-                  className={`relative w-full md:w-80 h-36 rounded-2xl p-4 flex items-center justify-between overflow-hidden shadow-md shrink-0 transition ${
-                    isHidden ? 'opacity-60 saturate-75' : ''
-                  }`}
-                  style={{ background: bgGradient }}
+          {/* Quick Actions */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {banners.length > 0 && (
+              <>
+                <button
+                  onClick={() => handleBulkToggle(true)}
+                  disabled={actionLoading}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer disabled:opacity-50"
+                  title="Show all banners in app"
                 >
-                  {/* Glowing Accent Orb */}
-                  <div
-                    className="absolute -right-6 -bottom-6 w-32 h-32 rounded-full blur-2xl pointer-events-none opacity-40"
-                    style={{ backgroundColor: accent }}
-                  />
+                  Show All
+                </button>
+                <button
+                  onClick={() => handleBulkToggle(false)}
+                  disabled={actionLoading}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer disabled:opacity-50"
+                  title="Hide all banners from app"
+                >
+                  Hide All
+                </button>
+              </>
+            )}
 
-                  {/* Text Left Column */}
-                  <div className="relative z-10 max-w-[62%] flex flex-col justify-between h-full">
+            <button
+              onClick={() => openModal()}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-black transition shadow-sm cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add New Banner</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Banners List */}
+        <div className="space-y-3.5">
+          {displayBanners.length === 0 ? (
+            <div className="p-12 text-center bg-white rounded-2xl border border-dashed border-slate-300">
+              <p className="text-sm font-semibold text-slate-600">No banners found in "{filterTab}" filter.</p>
+              <button
+                onClick={() => setFilterTab('all')}
+                className="mt-3 px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-xs font-semibold rounded-lg text-slate-800 transition cursor-pointer"
+              >
+                View All Banners
+              </button>
+            </div>
+          ) : (
+            displayBanners.map((banner, index) => {
+              const isHidden = banner.isActive === false;
+              const bgGradient =
+                banner.gradientColors && banner.gradientColors.length >= 3
+                  ? `linear-gradient(135deg, ${banner.gradientColors[0]} 0%, ${banner.gradientColors[1]} 50%, ${banner.gradientColors[2]} 100%)`
+                  : 'linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 50%, #0F172A 100%)';
+
+              const accent = banner.accentColor || '#3B82F6';
+
+              return (
+                <div
+                  key={banner.id}
+                  className={`bg-white rounded-2xl border p-4 shadow-2xs flex flex-col md:flex-row items-center gap-5 transition ${
+                    isHidden
+                      ? 'border-slate-200/60 bg-slate-50/50 opacity-75'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  {/* Reorder Vertical Handle */}
+                  <div className="flex md:flex-col items-center gap-1 self-start md:self-center shrink-0">
+                    <button
+                      onClick={() => handleMoveOrder(index, 'up')}
+                      disabled={index === 0 || actionLoading}
+                      title="Move Up"
+                      className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-20 cursor-pointer"
+                    >
+                      <ArrowUp className="w-4 h-4" />
+                    </button>
+                    <span className="text-[11px] font-bold text-slate-500 font-mono">
+                      #{index + 1}
+                    </span>
+                    <button
+                      onClick={() => handleMoveOrder(index, 'down')}
+                      disabled={index === banners.length - 1 || actionLoading}
+                      title="Move Down"
+                      className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-20 cursor-pointer"
+                    >
+                      <ArrowDown className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Banner Card Preview */}
+                  <div
+                    className={`relative w-full md:w-72 h-32 rounded-xl p-3.5 flex items-center justify-between overflow-hidden shadow-sm shrink-0 transition ${
+                      isHidden ? 'opacity-60 saturate-75' : ''
+                    }`}
+                    style={{ background: bgGradient }}
+                  >
+                    <div
+                      className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full blur-xl pointer-events-none opacity-40"
+                      style={{ backgroundColor: accent }}
+                    />
+
+                    {/* Text Left */}
+                    <div className="relative z-10 max-w-[62%] flex flex-col justify-between h-full">
+                      <div>
+                        <h4 className="text-white font-bold text-xs tracking-tight leading-snug line-clamp-2 whitespace-pre-line">
+                          {banner.title}
+                        </h4>
+                        <p className="text-white/80 text-[10px] font-medium mt-0.5 line-clamp-1">
+                          {banner.subtitle}
+                        </p>
+                      </div>
+
+                      <div className="mt-1">
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold text-white shadow-2xs"
+                          style={{
+                            backgroundColor: `${accent}33`,
+                            border: `1px solid ${accent}`,
+                          }}
+                        >
+                          {banner.buttonText || 'Shop now'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Image Right */}
+                    <div className="relative z-10 w-20 h-20 rounded-lg overflow-hidden bg-white/10 border border-white/20 shadow-inner flex items-center justify-center shrink-0">
+                      {banner.imageUrl ? (
+                        <img
+                          src={banner.imageUrl}
+                          alt={banner.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200';
+                          }}
+                        />
+                      ) : (
+                        <span className="text-white/40 text-[10px]">No image</span>
+                      )}
+                    </div>
+
+                    {/* Hidden Badge Watermark */}
+                    {isHidden && (
+                      <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-2xs flex items-center justify-center z-20">
+                        <span className="px-2.5 py-0.5 bg-slate-900/90 text-slate-300 text-[10px] font-bold uppercase tracking-wider rounded-md border border-slate-700 shadow-sm flex items-center gap-1">
+                          <EyeOff className="w-3 h-3 text-slate-400" />
+                          Hidden
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Banner Information - Clean, Minimal, No rainbow tag clutter */}
+                  <div className="flex-1 min-w-0 w-full space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                          !isHidden
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            !isHidden ? 'bg-emerald-500' : 'bg-slate-400'
+                          }`}
+                        />
+                        {!isHidden ? 'Active in App' : 'Hidden from App'}
+                      </span>
+
+                      {banner.isDefault && (
+                        <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                          Default Preset
+                        </span>
+                      )}
+                    </div>
+
                     <div>
-                      <h4 className="text-white font-black text-sm tracking-tight leading-tight line-clamp-2 whitespace-pre-line">
-                        {banner.title}
+                      <h4 className="text-sm font-bold text-slate-900 tracking-tight">
+                        {banner.title.replace('\n', ' ')}
                       </h4>
-                      <p className="text-white/80 text-[11px] font-medium mt-1 line-clamp-1">
-                        {banner.subtitle}
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {banner.subtitle || 'Promotional Banner'}
                       </p>
                     </div>
 
-                    <div className="mt-2">
-                      <span
-                        className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white shadow-sm"
-                        style={{
-                          backgroundColor: `${accent}33`,
-                          border: `1.5px solid ${accent}`,
-                        }}
-                      >
-                        {banner.buttonText || 'Shop now'}
+                    <div className="text-[11px] text-slate-500 flex items-center gap-2 pt-0.5">
+                      <span>
+                        Target: <strong className="text-slate-700">{banner.targetTitle || 'All Products'}</strong>
                       </span>
+                      <span>•</span>
+                      <span>Button: <strong className="text-slate-700">{banner.buttonText || 'Shop now'}</strong></span>
                     </div>
                   </div>
 
-                  {/* Product Image */}
-                  <div className="relative z-10 w-24 h-24 rounded-xl overflow-hidden bg-white/10 border border-white/20 shadow-inner flex items-center justify-center shrink-0">
-                    {banner.imageUrl ? (
-                      <img
-                        src={banner.imageUrl}
-                        alt={banner.title}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200';
-                        }}
-                      />
-                    ) : (
-                      <span className="text-white/40 text-xs">No image</span>
-                    )}
-                  </div>
-
-                  {/* Hidden Badge Watermark on Card */}
-                  {isHidden && (
-                    <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[1px] flex items-center justify-center z-20">
-                      <span className="px-3 py-1 bg-slate-900/90 text-amber-300 text-xs font-black uppercase tracking-wider rounded-lg border border-amber-400/40 shadow-lg flex items-center gap-1.5">
-                        <EyeOff className="w-3.5 h-3.5" />
-                        Hidden in App
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Banner Information */}
-                <div className="flex-1 min-w-0 w-full space-y-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Status Badge */}
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wide ${
+                  {/* Actions Column */}
+                  <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                    <button
+                      onClick={() => handleToggleActive(banner)}
+                      disabled={actionLoading}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
                         !isHidden
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-amber-100 text-amber-900 border border-amber-200'
+                          ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                          : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
                       }`}
                     >
-                      {!isHidden ? (
-                        <>
-                          <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-                          ACTIVE (VISIBLE IN APP)
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff className="w-3 h-3 text-amber-700" />
-                          HIDDEN FROM APP
-                        </>
-                      )}
-                    </span>
+                      {!isHidden ? <EyeOff className="w-3.5 h-3.5 text-slate-500" /> : <Eye className="w-3.5 h-3.5 text-emerald-600" />}
+                      <span>{!isHidden ? 'Hide' : 'Unhide'}</span>
+                    </button>
 
-                    {/* Default Tag */}
-                    {(banner.isDefault || index < 5) && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                        Default App Banner
-                      </span>
-                    )}
+                    <button
+                      onClick={() => openModal(banner)}
+                      title="Edit Banner"
+                      className="p-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition cursor-pointer"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
 
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700">
-                      Target: {banner.sectionType === 'category' ? 'Category' : banner.sectionType === 'search' ? 'Search' : 'All Products'}
-                    </span>
-
-                    {banner.categoryId && (
-                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                        Cat: {banner.categoryId}
-                      </span>
-                    )}
-
-                    {banner.searchTerm && (
-                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                        Search: "{banner.searchTerm}"
-                      </span>
-                    )}
-                  </div>
-
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 leading-snug whitespace-pre-line">
-                      {banner.title.replace('\n', ' ')}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">{banner.subtitle}</p>
-                  </div>
-
-                  <div className="text-[11px] text-slate-400 flex items-center gap-3">
-                    <span>Target: <strong>{banner.targetTitle || 'Products'}</strong></span>
-                    <span>•</span>
-                    <span>Button: <strong>{banner.buttonText}</strong></span>
+                    <button
+                      onClick={() => handleDeleteBanner(banner)}
+                      title="Delete Banner"
+                      className="p-1.5 rounded-xl border border-slate-200 hover:bg-rose-50 text-slate-400 hover:text-rose-600 hover:border-rose-200 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-
-                {/* HIDE / UNHIDE & ACTIONS */}
-                <div className="flex items-center gap-2.5 self-end md:self-center shrink-0">
-                  {/* Primary Hide / Unhide Toggle Button */}
-                  <button
-                    onClick={() => handleToggleActive(banner)}
-                    disabled={actionLoading}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-black transition active:scale-95 shadow-xs ${
-                      !isHidden
-                        ? 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-900'
-                        : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-white shadow-md'
-                    }`}
-                    title={!isHidden ? 'Click to hide banner from mobile app' : 'Click to show banner on mobile app'}
-                  >
-                    {!isHidden ? (
-                      <>
-                        <EyeOff className="w-4 h-4 text-amber-700" />
-                        <span>Hide Banner</span>
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="w-4 h-4 text-white" />
-                        <span>Unhide (Make Active)</span>
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => openModal(banner)}
-                    title="Edit Banner"
-                    className="p-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 transition"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    onClick={() => handleDeleteBanner(banner)}
-                    title="Delete Banner"
-                    className="p-2 rounded-xl border border-red-200 hover:bg-red-50 text-red-600 transition"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+              );
+            })
+          )}
+        </div>
+      </main>
 
       {/* CREATE / EDIT MODAL */}
       {isModalOpen && (
